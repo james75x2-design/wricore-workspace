@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WriCoRe — Write. Code. Research.</title>
+  <title>WriCoRe — Multi-LLM AI Workspace</title>
 
-  <!-- Google Fonts: IBM Plex Mono for wordmark and system widgets, DM Sans for clean UI copy -->
+  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -20,7 +20,7 @@
   <!-- Babel Compiler for compiling JSX dynamically in-browser -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-  <!-- Custom Configuration for Tailwind to extend custom thematic variables -->
+  <!-- Custom Configuration for Tailwind -->
   <script>
     tailwind.config = {
       theme: {
@@ -38,7 +38,7 @@
   </script>
 
   <style>
-    /* Custom Scrollbar Styles for the chat window container */
+    /* Custom Scrollbar Styles */
     ::-webkit-scrollbar {
       width: 4px;
       height: 4px;
@@ -54,7 +54,6 @@
       background: rgba(0, 212, 255, 0.2);
     }
     
-    /* Cyberpunk custom glow animations and backgrounds */
     .glow-card {
       position: relative;
     }
@@ -74,12 +73,11 @@
 </head>
 <body class="bg-[#0b0f19] text-[#f0f4f8] antialiased overflow-x-hidden min-h-screen">
 
-  <!-- Root mount point for our React Application -->
   <div id="root"></div>
 
   <script type="text/babel">
     // =========================================================
-    // INLINE COMPATIBLE LUCIDE-LIKE SVGS FOR STANDALONE STABILITY
+    // INLINE COMPATIBLE SVGS FOR ICONS
     // =========================================================
     const PenToolIcon = ({ className, ...props }) => (
       <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
@@ -194,7 +192,7 @@
       write: {
         id: 'write',
         name: 'Writing Agent',
-        badge: 'WRITE-BOT v2.5',
+        badge: 'WRITE-BOT v2.6',
         tagline: 'Professional Writing & Editorial Assistant',
         description: 'Your premium writing partner for essays, blogs, emails, summaries, and complex copy edits.',
         systemInstruction: `You are the WriCoRe Writing Agent, a master copywriter and editorial expert. 
@@ -214,7 +212,7 @@ Your goal is to draft copy with immaculate structure, elegance, and tone alignme
       code: {
         id: 'code',
         name: 'Coding Agent',
-        badge: 'DEV-BOT v2.5',
+        badge: 'DEV-BOT v2.6',
         tagline: 'Full-Stack Engineering & Debugging Assistant',
         description: 'Your interactive code companion. Writes clean code, explains algorithms, and refactors bugs.',
         systemInstruction: `You are the WriCoRe Coding Agent, a world-class senior software engineer.
@@ -234,9 +232,9 @@ Your goal is to draft copy with immaculate structure, elegance, and tone alignme
       research: {
         id: 'research',
         name: 'Research Agent',
-        badge: 'ANALYST-BOT v2.5',
-        tagline: 'Deep Analysis & Google-Search Grounded Researcher',
-        description: 'Empowered with factual grounding to synthesize deep, logical reports with citations.',
+        badge: 'ANALYST-BOT v2.6',
+        tagline: 'Deep Analysis & Grounded Researcher',
+        description: 'Empowered with factual grounding to synthesize deep, logical reports.',
         systemInstruction: `You are the WriCoRe Research Agent, a meticulous and objective senior research analyst.
 - Use facts and logical synthesis to formulate thorough, deeply structured reports.
 - Use Markdown headers, tables, bulleted lists, and blockquotes for scientific presentation.
@@ -252,6 +250,14 @@ Your goal is to draft copy with immaculate structure, elegance, and tone alignme
       }
     };
 
+    // Models mapping for OpenRouter models
+    const OPENROUTER_MODELS = [
+      { id: 'meta-llama/llama-3-8b-instruct:free', name: 'Llama 3 8B (Free)' },
+      { id: 'google/gemma-2-9b-it:free', name: 'Gemma 2 9B (Free)' },
+      { id: 'mistralai/mistral-7b-instruct:free', name: 'Mistral 7B (Free)' },
+      { id: 'qwen/qwen-2-7b-instruct:free', name: 'Qwen 2 7B (Free)' }
+    ];
+
     // ==========================================
     // MAIN REACT APPLICATION ENTRY POINT
     // ==========================================
@@ -266,20 +272,25 @@ Your goal is to draft copy with immaculate structure, elegance, and tone alignme
       const [isLoading, setIsLoading] = React.useState(false);
       const [errorMsg, setErrorMsg] = React.useState(null);
       const [isModalOpen, setIsModalOpen] = React.useState(false);
-      const [customApiKey, setCustomApiKey] = React.useState('');
-      const [hasCustomKey, setHasCustomKey] = React.useState(false);
+      
+      // Multi-API Settings
+      const [apiProvider, setApiProvider] = React.useState('gemini'); // 'gemini' or 'openrouter'
+      const [apiKey, setApiKey] = React.useState('');
+      const [openRouterModel, setOpenRouterModel] = React.useState('meta-llama/llama-3-8b-instruct:free');
+      const [isConnected, setIsConnected] = React.useState(false);
+
       const [isGuideOpen, setIsGuideOpen] = React.useState(false);
       const [copiedIndex, setCopiedIndex] = React.useState(null);
 
       const chatEndRef = React.useRef(null);
       const textareaRef = React.useRef(null);
 
-      // Auto scroll chat to the latest dialogue bubble
+      // Auto scroll chat
       React.useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, [messages, isLoading, activeAgent]);
 
-      // Adjust input field height dynamically depending on size of content
+      // Adjust height
       React.useEffect(() => {
         if (textareaRef.current) {
           textareaRef.current.style.height = 'auto';
@@ -287,13 +298,18 @@ Your goal is to draft copy with immaculate structure, elegance, and tone alignme
         }
       }, [userInput]);
 
-      // Fetch active custom API Key on startup from secure localStorage
+      // Fetch settings on load
       React.useEffect(() => {
-        const savedKey = localStorage.getItem('wricore_custom_key');
+        const savedProvider = localStorage.getItem('wricore_provider');
+        const savedKey = localStorage.getItem('wricore_key');
+        const savedModel = localStorage.getItem('wricore_or_model');
+        
+        if (savedProvider) setApiProvider(savedProvider);
         if (savedKey) {
-          setCustomApiKey(savedKey);
-          setHasCustomKey(true);
+          setApiKey(savedKey);
+          setIsConnected(true);
         }
+        if (savedModel) setOpenRouterModel(savedModel);
       }, []);
 
       const agent = AGENT_CONFIGS[activeAgent];
@@ -303,8 +319,6 @@ Your goal is to draft copy with immaculate structure, elegance, and tone alignme
       // ==========================================
       const renderMessageContent = (text) => {
         if (!text) return null;
-        
-        // Match code blocks and split blocks
         const parts = text.split(/(```[\s\S]*?```)/g);
         
         return parts.map((part, index) => {
@@ -393,11 +407,9 @@ Your goal is to draft copy with immaculate structure, elegance, and tone alignme
         });
       };
 
-      // Helper to match inline syntax: **bold** and `code`
       const parseInlineMarkdown = (text) => {
         const elements = [];
         let key = 0;
-
         const boldRegex = /\*\*([^*]+)\*\*/g;
         const inlineCodeRegex = /`([^`]+)`/g;
 
@@ -428,11 +440,9 @@ Your goal is to draft copy with immaculate structure, elegance, and tone alignme
         if (currentIndex < text.length) {
           elements.push(<span key={key++}>{text.substring(currentIndex)}</span>);
         }
-
         return elements.length > 0 ? elements : text;
       };
 
-      // Secure local text copy function
       const handleCopyText = (text, index) => {
         try {
           const textArea = document.createElement("textarea");
@@ -441,21 +451,26 @@ Your goal is to draft copy with immaculate structure, elegance, and tone alignme
           textArea.select();
           document.execCommand('copy');
           document.body.removeChild(textArea);
-          
           setCopiedIndex(index);
           setTimeout(() => setCopiedIndex(null), 2000);
         } catch (err) {
-          console.error("Browser block copy failed: ", err);
+          console.error("Copy failed: ", err);
         }
       };
 
       // ==========================================
-      // INTEGRATED GEMINI CHAT HANDLER
+      // ADAPTIVE MULTI-API CHAT HANDLER
       // ==========================================
       const handleSendMessage = async (e, suggestedPrompt = null) => {
         if (e) e.preventDefault();
         const promptToSend = suggestedPrompt || userInput;
         if (!promptToSend.trim() || isLoading) return;
+
+        if (!isConnected || !apiKey) {
+          setErrorMsg("Please connect your API Key first! Click 'Connect' in the top right to configure your API Provider.");
+          setIsLoading(false);
+          return;
+        }
 
         const userMessage = {
           role: 'user',
@@ -472,43 +487,58 @@ Your goal is to draft copy with immaculate structure, elegance, and tone alignme
         setIsLoading(true);
         setErrorMsg(null);
 
-        // Get key: use local setting or fallback to inject
-        let apiKeyToUse = "";
-        if (hasCustomKey && customApiKey) {
-          apiKeyToUse = customApiKey;
-        } else {
-          // If no custom key is provided, prompt user to add their own free developer key
-          setErrorMsg("Please connect your Gemini API Key first. Click 'Connect' in the top right to insert your Google Studio key for free access!");
-          setIsLoading(false);
-          return;
-        }
+        let url = "";
+        let headers = { 'Content-Type': 'application/json' };
+        let bodyPayload = {};
 
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKeyToUse}`;
-        
-        const historyPayload = messages[activeAgent].map(msg => ({
-          role: msg.role === 'user' ? 'user' : 'model',
-          parts: [{ text: msg.content }]
-        }));
+        // Build Payload depending on whether we use Gemini or OpenRouter
+        if (apiProvider === 'gemini') {
+          // Gemini REST Format
+          url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+          
+          const historyPayload = messages[activeAgent].map(msg => ({
+            role: msg.role === 'user' ? 'user' : 'model',
+            parts: [{ text: msg.content }]
+          }));
+          historyPayload.push({
+            role: 'user',
+            parts: [{ text: promptToSend }]
+          });
 
-        historyPayload.push({
-          role: 'user',
-          parts: [{ text: promptToSend }]
-        });
-
-        const bodyPayload = {
-          contents: historyPayload,
-          systemInstruction: {
-            parts: [{ text: agent.systemInstruction }]
+          bodyPayload = {
+            contents: historyPayload,
+            systemInstruction: {
+              parts: [{ text: agent.systemInstruction }]
+            }
+          };
+          if (activeAgent === 'research') {
+            bodyPayload.tools = [{ google_search: {} }];
           }
-        };
 
-        // Inject Google Search grounding tool if Research agent is active
-        if (activeAgent === 'research') {
-          bodyPayload.tools = [{ google_search: {} }];
+        } else if (apiProvider === 'openrouter') {
+          // OpenRouter OpenAI-Compatible Format
+          url = "https://openrouter.ai/api/v1/chat/completions";
+          headers['Authorization'] = `Bearer ${apiKey}`;
+          headers['HTTP-Referer'] = window.location.href || 'http://localhost';
+          headers['X-Title'] = 'WriCoRe AI Workspace';
+
+          const historyPayload = messages[activeAgent].map(msg => ({
+            role: msg.role === 'user' ? 'user' : 'assistant',
+            content: msg.content
+          }));
+          historyPayload.push({
+            role: 'user',
+            content: `${agent.systemInstruction}\n\nUser request: ${promptToSend}`
+          });
+
+          bodyPayload = {
+            model: openRouterModel,
+            messages: historyPayload
+          };
         }
 
         let attempt = 0;
-        const maxRetries = 5;
+        const maxRetries = 3;
         let success = false;
         let responseData = null;
 
@@ -516,7 +546,7 @@ Your goal is to draft copy with immaculate structure, elegance, and tone alignme
           try {
             const response = await fetch(url, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: headers,
               body: JSON.stringify(bodyPayload)
             });
 
@@ -530,7 +560,7 @@ Your goal is to draft copy with immaculate structure, elegance, and tone alignme
           } catch (err) {
             attempt++;
             if (attempt >= maxRetries) {
-              setErrorMsg(`API Connect failed after ${maxRetries} tries: ${err.message}. Double-check your Gemini API key in settings.`);
+              setErrorMsg(`API failed after ${maxRetries} tries: ${err.message}. Check your API Key & connection status.`);
               setIsLoading(false);
               return;
             }
@@ -540,18 +570,24 @@ Your goal is to draft copy with immaculate structure, elegance, and tone alignme
         }
 
         try {
-          const candidate = responseData?.candidates?.[0];
-          let assistantText = candidate?.content?.parts?.[0]?.text;
+          let assistantText = "";
           
-          // Render sources/citations if Google Search Grounding metadata exists
-          const sources = candidate?.groundingMetadata?.groundingAttributions;
-          if (sources && sources.length > 0) {
-            assistantText += "\n\n### Grounding Sources & References\n";
-            sources.forEach((source, sIdx) => {
-              if (source.web?.uri) {
-                assistantText += `${sIdx + 1}. [${source.web.title || source.web.uri}](${source.web.uri})\n`;
-              }
-            });
+          if (apiProvider === 'gemini') {
+            const candidate = responseData?.candidates?.[0];
+            assistantText = candidate?.content?.parts?.[0]?.text;
+            
+            // Grounding references
+            const sources = candidate?.groundingMetadata?.groundingAttributions;
+            if (sources && sources.length > 0) {
+              assistantText += "\n\n### Grounding Sources & References\n";
+              sources.forEach((source, sIdx) => {
+                if (source.web?.uri) {
+                  assistantText += `${sIdx + 1}. [${source.web.title || source.web.uri}](${source.web.uri})\n`;
+                }
+              });
+            }
+          } else if (apiProvider === 'openrouter') {
+            assistantText = responseData?.choices?.[0]?.message?.content;
           }
 
           if (assistantText) {
@@ -566,38 +602,52 @@ Your goal is to draft copy with immaculate structure, elegance, and tone alignme
               [activeAgent]: [...prev[activeAgent], aiMessage]
             }));
           } else {
-            throw new Error("Unable to capture standard response blocks.");
+            throw new Error("Empty text returned by the model.");
           }
         } catch (err) {
-          setErrorMsg("JSON Parse exception: " + err.message);
+          setErrorMsg("Failed to parse API Response: " + err.message);
         } finally {
           setIsLoading(false);
         }
       };
 
       const handleClearChat = () => {
-        setMessages(prev => ({
-          ...prev,
-          [activeAgent]: []
-        }));
+        setMessages(prev => ({ ...prev, [activeAgent]: [] }));
         setErrorMsg(null);
       };
 
-      const handleSaveApiKey = () => {
-        if (!customApiKey.trim() || !customApiKey.startsWith('AIzaSy')) {
-          setErrorMsg("Invalid format! Gemini keys start with AIzaSy.");
+      const handleSaveConfig = () => {
+        if (!apiKey.trim()) {
+          setErrorMsg("Please enter a valid API key.");
           return;
         }
-        localStorage.setItem('wricore_custom_key', customApiKey.trim());
-        setHasCustomKey(true);
+
+        // Basic verification
+        if (apiProvider === 'gemini' && !apiKey.startsWith('AIzaSy')) {
+          setErrorMsg("Format error: Gemini API keys should start with 'AIzaSy'.");
+          return;
+        }
+        if (apiProvider === 'openrouter' && !apiKey.startsWith('sk-or-')) {
+          setErrorMsg("Format error: OpenRouter API keys typically start with 'sk-or-'.");
+          return;
+        }
+
+        localStorage.setItem('wricore_provider', apiProvider);
+        localStorage.setItem('wricore_key', apiKey.trim());
+        localStorage.setItem('wricore_or_model', openRouterModel);
+        
+        setIsConnected(true);
         setIsModalOpen(false);
         setErrorMsg(null);
       };
 
-      const handleClearApiKey = () => {
-        localStorage.removeItem('wricore_custom_key');
-        setCustomApiKey('');
-        setHasCustomKey(false);
+      const handleClearConfig = () => {
+        localStorage.removeItem('wricore_provider');
+        localStorage.removeItem('wricore_key');
+        localStorage.removeItem('wricore_or_model');
+        
+        setApiKey('');
+        setIsConnected(false);
         setErrorMsg(null);
       };
 
@@ -615,11 +665,11 @@ Your goal is to draft copy with immaculate structure, elegance, and tone alignme
                 <span className="text-[#34d399]">R</span>
                 <span className="text-gray-200">e</span>
                 <span className="ml-2 text-xs py-0.5 px-2 bg-[#1a2235] text-[#8b9ab5] border border-white/10 rounded-full font-sans font-medium tracking-normal">
-                  Web Standalone v2.5
+                  Multi-LLM v2.6
                 </span>
               </div>
               <div className="font-mono text-[10px] uppercase text-[#4a5568] tracking-widest mt-0.5">
-                Write · Code · Research
+                Active Provider: <span className="text-white font-bold">{apiProvider.toUpperCase()}</span>
               </div>
             </div>
 
@@ -628,29 +678,28 @@ Your goal is to draft copy with immaculate structure, elegance, and tone alignme
                 type="button"
                 onClick={handleClearChat}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-red-500/10 hover:text-red-400 border border-white/5 hover:border-red-500/20 rounded-lg text-xs font-medium text-[#8b9ab5] transition-all"
-                title="Clear Active Chat Session"
               >
                 <TrashIcon className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Clear Session</span>
+                <span className="hidden sm:inline">Clear Chat</span>
               </button>
 
               <button 
                 type="button"
                 onClick={() => setIsModalOpen(true)}
                 className={`flex items-center gap-2 px-3 py-1.5 border rounded-lg text-xs font-medium transition-all ${
-                  hasCustomKey 
+                  isConnected 
                     ? 'bg-emerald-500/10 text-[#34d399] border-emerald-500/20 hover:bg-emerald-500/20' 
-                    : 'bg-white/5 text-[#00d4ff] border-white/10 hover:border-[#00d4ff]/30 hover:bg-[#00d4ff]/5'
+                    : 'bg-white/5 text-[#00d4ff] border-white/10 hover:border-[#00d4ff]/30'
                 }`}
               >
-                <span className={`w-1.5 h-1.5 rounded-full ${hasCustomKey ? 'bg-[#34d399] animate-pulse' : 'bg-[#00d4ff]'}`} />
-                <span className="font-mono text-[11px] font-semibold uppercase">{hasCustomKey ? 'Connected' : 'Click to Connect'}</span>
+                <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-[#34d399] animate-pulse' : 'bg-[#00d4ff]'}`} />
+                <span className="font-mono text-[11px] font-semibold uppercase">{isConnected ? 'Configured' : 'Connect API'}</span>
                 <KeyIcon className="w-3.5 h-3.5" />
               </button>
             </div>
           </header>
 
-          {/* THREE MULTI-AGENT TAB CONTROLLERS */}
+          {/* THREE AGENT TABS */}
           <nav className="grid grid-cols-3 gap-2 py-4 flex-shrink-0" role="tablist">
             {Object.keys(AGENT_CONFIGS).map((key) => {
               const cfg = AGENT_CONFIGS[key];
@@ -664,29 +713,24 @@ Your goal is to draft copy with immaculate structure, elegance, and tone alignme
                     setErrorMsg(null);
                   }}
                   className={`flex flex-col sm:flex-row items-center justify-center gap-2 p-3 sm:py-3.5 sm:px-4 rounded-xl border text-center transition-all ${
-                    isSelected 
-                      ? `text-white`
-                      : 'bg-[#111827]/40 border-white/5 text-[#8b9ab5] hover:border-white/10 hover:text-white'
+                    isSelected ? 'text-white' : 'bg-[#111827]/40 border-white/5 text-[#8b9ab5] hover:border-white/10'
                   }`}
                   style={{
                     borderColor: isSelected ? cfg.color : '',
                     backgroundColor: isSelected ? cfg.glowColor : '',
                     boxShadow: isSelected ? `0 4px 20px -8px ${cfg.color}` : ''
                   }}
-                  role="tab"
-                  aria-selected={isSelected}
                 >
                   {cfg.id === 'write' && <PenToolIcon className="w-5 h-5" style={{ color: isSelected ? cfg.color : '' }} />}
                   {cfg.id === 'code' && <Code2Icon className="w-5 h-5" style={{ color: isSelected ? cfg.color : '' }} />}
                   {cfg.id === 'research' && <SearchIcon className="w-5 h-5" style={{ color: isSelected ? cfg.color : '' }} />}
-                  
                   <span className="text-xs sm:text-sm font-semibold tracking-wide">{cfg.name}</span>
                 </button>
               );
             })}
           </nav>
 
-          {/* AGENT BADGE & DESCRIPTION SUMMARY */}
+          {/* AGENT BADGE & DESC */}
           <div className="flex items-center gap-3 p-3 bg-[#162030]/60 border border-white/5 rounded-xl text-xs sm:text-sm text-[#8b9ab5] flex-shrink-0">
             <span 
               className="font-mono font-bold tracking-wider px-2 py-0.5 rounded text-[10px]" 
@@ -701,8 +745,7 @@ Your goal is to draft copy with immaculate structure, elegance, and tone alignme
             <span className="truncate">{agent.description}</span>
           </div>
 
-          {}
-          {/* DYNAMIC CLIENT-SIDE ERROR ALERTS */}
+          {/* SYSTEM ALERTS */}
           {errorMsg && (
             <div className="mt-3 flex items-start gap-2.5 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs sm:text-sm text-red-300 animate-fadeIn">
               <AlertCircleIcon className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
@@ -729,7 +772,7 @@ Your goal is to draft copy with immaculate structure, elegance, and tone alignme
                 >
                   {agent.emptyStateIcon}
                 </div>
-                <h2 className="text-xl font-bold text-white mb-1">{agent.name} Enabled</h2>
+                <h2 className="text-xl font-bold text-white mb-1">{agent.name} ({apiProvider.toUpperCase()} Mode)</h2>
                 <p className="text-[#8b9ab5] text-sm max-w-sm mb-6 leading-relaxed">
                   {agent.tagline}. Pick a prompt template below or start messaging.
                 </p>
@@ -759,9 +802,7 @@ Your goal is to draft copy with immaculate structure, elegance, and tone alignme
                   >
                     <div 
                       className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center font-mono text-[11px] font-bold border ${
-                        msg.role === 'user' 
-                          ? 'bg-[#1a2235] border-white/10 text-[#8b9ab5]' 
-                          : 'bg-[#111827] border-white/5'
+                        msg.role === 'user' ? 'bg-[#1a2235] border-white/10 text-[#8b9ab5]' : 'bg-[#111827] border-white/5'
                       }`}
                       style={{
                         borderColor: msg.role === 'model' ? `${agent.color}25` : '',
@@ -778,9 +819,6 @@ Your goal is to draft copy with immaculate structure, elegance, and tone alignme
                             ? 'bg-[#1a2235]/40 border-white/5 text-gray-100 rounded-tr-sm'
                             : 'bg-[#111827]/80 border-white/5 text-gray-200 rounded-tl-sm'
                         }`}
-                        style={{
-                          borderColor: msg.role === 'model' ? 'rgba(255,255,255,0.06)' : ''
-                        }}
                       >
                         {msg.role === 'user' ? (
                           <p className="whitespace-pre-wrap">{msg.content}</p>
@@ -795,13 +833,9 @@ Your goal is to draft copy with immaculate structure, elegance, and tone alignme
                   </div>
                 ))}
 
-                {/* ACTIVE RUNNING AI TYPING INDICATOR */}
                 {isLoading && (
                   <div className="flex gap-3 max-w-[80%] mr-auto animate-pulse">
-                    <div 
-                      className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center font-mono text-[11px] font-bold border bg-[#111827]"
-                      style={{ borderColor: `${agent.color}25`, color: agent.color }}
-                    >
+                    <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center font-mono text-[11px] font-bold border bg-[#111827]" style={{ borderColor: `${agent.color}25`, color: agent.color }}>
                       AI
                     </div>
                     <div className="space-y-1">
@@ -818,8 +852,7 @@ Your goal is to draft copy with immaculate structure, elegance, and tone alignme
             <div ref={chatEndRef} />
           </main>
 
-          {}
-          {/* INPUT CONTROLS BLOCK */}
+          {/* INPUT CONTROLS */}
           <div className="py-4 border-t border-white/5 flex-shrink-0 relative z-10">
             <form onSubmit={handleSendMessage} className="relative bg-[#0d1520] border border-white/10 focus-within:border-[#00d4ff]/50 rounded-2xl p-2 transition-all">
               <textarea
@@ -861,15 +894,14 @@ Your goal is to draft copy with immaculate structure, elegance, and tone alignme
             <div className="flex items-center gap-1.5 mt-2.5 px-1 justify-center">
               <InfoIcon className="w-3.5 h-3.5 text-gray-600" />
               <span className="text-[10px] text-gray-500 text-center font-mono uppercase tracking-wider">
-                Direct Client-side integration. Chat queries remain localized and fully private.
+                Direct Client-side integration. Your chats never touch secondary servers.
               </span>
             </div>
           </div>
 
-          {}
-          {/* CUSTOM API KEY CONFIG MODAL */}
+          {/* API CONFIG MODAL */}
           {isModalOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
               <div className="bg-[#111827] border border-white/10 rounded-2xl max-w-md w-full p-6 relative overflow-hidden glow-card">
                 <button 
                   type="button"
@@ -881,52 +913,97 @@ Your goal is to draft copy with immaculate structure, elegance, and tone alignme
 
                 <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
                   <KeyIcon className="w-5 h-5 text-[#00d4ff]" />
-                  Manage Gemini API Key
+                  Connect API Configuration
                 </h3>
                 
                 <p className="text-xs text-[#8b9ab5] mb-4 leading-relaxed">
-                  Provide your own Gemini developer API key to gain full capability access to WriCoRe agents directly from your browser.
+                  Choose your preferred LLM provider. Both options allow direct client-side requests from your browser with no intermediate servers.
                 </p>
 
-                <div className="space-y-3">
+                <div className="space-y-4">
+                  {/* Provider selector */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] text-gray-400 font-mono uppercase tracking-wider block">API Provider</label>
+                    <select
+                      value={apiProvider}
+                      onChange={(e) => {
+                        setApiProvider(e.target.value);
+                        setApiKey('');
+                      }}
+                      className="w-full bg-[#0d1520] border border-white/10 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-[#00d4ff]"
+                    >
+                      <option value="gemini">Google Gemini (Free Tier)</option>
+                      <option value="openrouter">OpenRouter (Access Free Llama 3, Gemma, etc.)</option>
+                    </select>
+                  </div>
+
+                  {/* OpenRouter Model selection if selected */}
+                  {apiProvider === 'openrouter' && (
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] text-gray-400 font-mono uppercase tracking-wider block">Choose Free Model</label>
+                      <select
+                        value={openRouterModel}
+                        onChange={(e) => setOpenRouterModel(e.target.value)}
+                        className="w-full bg-[#0d1520] border border-white/10 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-[#00d4ff]"
+                      >
+                        {OPENROUTER_MODELS.map(m => (
+                          <option key={m.id} value={m.id}>{m.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Instructions trigger */}
                   <button
                     type="button"
                     onClick={() => setIsGuideOpen(!isGuideOpen)}
                     className="w-full text-left p-2.5 bg-white/5 border border-white/5 hover:border-[#00d4ff]/30 rounded-xl text-xs text-[#00d4ff] font-medium flex items-center justify-between"
                   >
-                    <span>How to acquire a free Gemini API Key?</span>
+                    <span>How to get a key?</span>
                     <ChevronDownIcon className={`w-4 h-4 transition-transform ${isGuideOpen ? 'rotate-180' : ''}`} />
                   </button>
 
                   {isGuideOpen && (
                     <div className="p-3 bg-[#0d1520] border border-white/5 rounded-xl space-y-2 text-xs text-[#8b9ab5] leading-relaxed">
-                      <p>1. Open Google AI Studio: <a href="https://aistudio.google.com" target="_blank" rel="noopener noreferrer" className="text-[#00d4ff] hover:underline inline-flex items-center gap-0.5 font-bold">Google AI Studio <ExternalLinkIcon className="w-3 h-3" /></a></p>
-                      <p>2. Complete login utilizing a traditional Google workspace account.</p>
-                      <p>3. Hit the <strong className="text-white">"Get API Key"</strong> configuration widget and generate a unique key.</p>
-                      <p>4. Paste your key starting with <code className="text-white bg-white/10 px-1 py-0.5 rounded font-mono">AIzaSy</code> below.</p>
+                      {apiProvider === 'gemini' ? (
+                        <React.Fragment>
+                          <p>1. Go to <a href="https://aistudio.google.com" target="_blank" rel="noopener noreferrer" className="text-[#00d4ff] hover:underline inline-flex items-center gap-0.5 font-bold">Google AI Studio <ExternalLinkIcon className="w-3 h-3" /></a></p>
+                          <p>2. Select <strong className="text-white">"Get API Key"</strong> and generate a free API key code.</p>
+                          <p>3. Key starts with <code className="text-white bg-white/10 px-1 py-0.5 rounded font-mono">AIzaSy</code>.</p>
+                        </React.Fragment>
+                      ) : (
+                        <React.Fragment>
+                          <p>1. Go to <a href="https://openrouter.ai" target="_blank" rel="noopener noreferrer" className="text-[#00d4ff] hover:underline inline-flex items-center gap-0.5 font-bold">OpenRouter.ai <ExternalLinkIcon className="w-3 h-3" /></a></p>
+                          <p>2. Sign up, navigate to Keys, and click <strong className="text-white">"Create Key"</strong>.</p>
+                          <p>3. Key starts with <code className="text-white bg-white/10 px-1 py-0.5 rounded font-mono">sk-or-</code>.</p>
+                        </React.Fragment>
+                      )}
                     </div>
                   )}
 
+                  {/* API Key Input */}
                   <div className="space-y-1.5">
-                    <label className="text-[10px] text-gray-400 font-mono uppercase tracking-wider block">Gemini API Key</label>
+                    <label className="text-[10px] text-gray-400 font-mono uppercase tracking-wider block">
+                      {apiProvider === 'gemini' ? 'Gemini API Key' : 'OpenRouter API Key'}
+                    </label>
                     <input
                       type="password"
-                      placeholder="AIzaSy..."
-                      value={customApiKey}
-                      onChange={(e) => setCustomApiKey(e.target.value)}
+                      placeholder={apiProvider === 'gemini' ? 'AIzaSy...' : 'sk-or-...'}
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
                       className="w-full bg-[#0d1520] border border-white/10 focus:border-[#00d4ff] rounded-xl px-3 py-2 text-sm text-white font-mono placeholder-gray-600 outline-none transition-colors"
                     />
                   </div>
 
-                  {hasCustomKey && (
+                  {isConnected && (
                     <div className="flex items-center justify-between text-xs py-1.5 px-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-[#34d399] font-mono">
-                      <span>Custom API Key is active</span>
+                      <span>Connection configuration active</span>
                       <button 
-                        type="button"
-                        onClick={handleClearApiKey}
+                        type="button" 
+                        onClick={handleClearConfig}
                         className="text-red-400 hover:text-red-300 underline font-sans font-bold"
                       >
-                        Remove Key
+                        Disconnect
                       </button>
                     </div>
                   )}
@@ -935,16 +1012,16 @@ Your goal is to draft copy with immaculate structure, elegance, and tone alignme
                     <button
                       type="button"
                       onClick={() => setIsModalOpen(false)}
-                      className="flex-1 py-2 bg-white/5 hover:bg-white/10 text-xs font-semibold rounded-xl text-gray-300 transition-all border border-white/5"
+                      className="flex-1 py-2 bg-white/5 hover:bg-white/10 text-xs font-semibold rounded-xl text-gray-300 border border-white/5"
                     >
                       Close
                     </button>
                     <button
                       type="button"
-                      onClick={handleSaveApiKey}
-                      className="flex-1 py-2 bg-[#00d4ff] hover:bg-[#33ddff] text-[#0b0f19] text-xs font-semibold rounded-xl transition-all"
+                      onClick={handleSaveConfig}
+                      className="flex-1 py-2 bg-[#00d4ff] hover:bg-[#33ddff] text-[#0b0f19] text-xs font-semibold rounded-xl"
                     >
-                      Save & Connect
+                      Save Configuration
                     </button>
                   </div>
                 </div>
@@ -956,7 +1033,6 @@ Your goal is to draft copy with immaculate structure, elegance, and tone alignme
       );
     }
 
-    // Mount the finalized React Application component block directly into the Document Root
     const container = document.getElementById('root');
     const root = ReactDOM.createRoot(container);
     root.render(<App />);
