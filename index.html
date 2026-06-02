@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WriCoRe — Groq AI Workspace</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- React 18 & ReactDOM 18 CDN links -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+
+  <!-- Babel Compiler for compiling JSX dynamically in-browser -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Custom Configuration for Tailwind -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['DM Sans', 'sans-serif'],
+            mono: ['IBM Plex Mono', 'monospace'],
+          },
+          borderWidth: {
+            '3': '3px'
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom Scrollbar Styles */
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(0, 212, 255, 0.2);
+    }
+    
+    .glow-card {
+      position: relative;
+    }
+    .glow-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      padding: 1px;
+      background: linear-gradient(to bottom, rgba(255,255,255,0.1), rgba(255,255,255,0.02));
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body class="bg-[#0b0f19] text-[#f0f4f8] antialiased overflow-x-hidden min-h-screen">
+
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const PenToolIcon = ({ className, ...props }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <path d="M12 20h9" />
+        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+      </svg>
+    );
+
+    const Volume2Icon = ({ className, ...props }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+        <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+        <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+      </svg>
+    );
+
+    const FileTextIcon = ({ className, ...props }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <polyline points="14 2 14 8 20 8" />
+        <line x1="16" y1="13" x2="8" y2="13" />
+        <line x1="16" y1="17" x2="8" y2="17" />
+        <polyline points="10 9 9 9 8 9" />
+      </svg>
+    );
+
+    const MailIcon = ({ className, ...props }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+        <polyline points="22,6 12,13 2,6" />
+      </svg>
+    );
+
+    const GitBranchIcon = ({ className, ...props }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <line x1="6" y1="3" x2="6" y2="15" />
+        <circle cx="18" cy="6" r="3" />
+        <circle cx="6" cy="18" r="3" />
+        <path d="M18 9a9 9 0 0 1-9 9" />
+      </svg>
+    );
+
+    const Code2Icon = ({ className, ...props }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <polyline points="16 18 22 12 16 6" />
+        <polyline points="8 6 2 12 8 18" />
+      </svg>
+    );
+
+    const SearchIcon = ({ className, ...props }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <circle cx="11" cy="11" r="8" />
+        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      </svg>
+    );
+
+    const SendIcon = ({ className, ...props }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <line x1="22" y1="2" x2="11" y2="13" />
+        <polygon points="22 2 15 22 11 13 2 9 22 2" />
+      </svg>
+    );
+
+    const TrashIcon = ({ className, ...props }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <polyline points="3 6 5 6 21 6" />
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+        <line x1="10" y1="11" x2="10" y2="17" />
+        <line x1="14" y1="11" x2="14" y2="17" />
+      </svg>
+    );
+
+    const CheckIcon = ({ className, ...props }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <polyline points="20 6 9 17 4 12" />
+      </svg>
+    );
+
+    const ArrowUpRightIcon = ({ className, ...props }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <line x1="7" y1="17" x2="17" y2="7" />
+        <polyline points="7 7 17 7 17 17" />
+      </svg>
+    );
+
+    const SparklesIcon = ({ className, ...props }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m11.314 11.314l.707-.707" />
+      </svg>
+    );
+
+    const AlertCircleIcon = ({ className, ...props }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="8" x2="12" y2="12" />
+        <line x1="12" y1="16" x2="12.01" y2="16" />
+      </svg>
+    );
+
+    const CopyIcon = ({ className, ...props }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+      </svg>
+    );
+
+    const ThumbsUpIcon = ({ className, ...props }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1-2-2h3" />
+      </svg>
+    );
+
+    const ThumbsDownIcon = ({ className, ...props }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm12-3h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3" />
+      </svg>
+    );
+
+    const InfoIcon = ({ className, ...props }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="16" x2="12" y2="12"/>
+        <line x1="12" y1="8" x2="12.01" y2="8"/>
+      </svg>
+    );
+
+    const WORKER_URL = 'https://wricore.james75x2.workers.dev/';
+    
+    // Active, stable high-performance models catalog
+    const GROQ_MODELS_FALLBACK = [
+      'llama-3.3-70b-versatile',
+      'llama-3.1-8b-instant'
+    ];
+
+    // ==========================================
+    // AGENT CONFIGURATIONS & SYSTEM TEMPLATES
+    // ==========================================
+    const AGENT_CONFIGS = {
+      write: {
+        id: 'write',
+        name: 'Writing Agent',
+        badge: 'WRITE-BOT v2.6',
+        tagline: 'Professional Writing & Editorial Assistant',
+        description: 'Your premium writing partner for essays, blogs, emails, summaries, and complex copy edits.',
+        systemInstruction: `You are the WriCoRe Writing Agent, a master copywriter and editorial expert. 
+Your goal is to draft copy with immaculate structure, elegance, and tone alignment. 
+- Use formatting (bolding, clean lists, headers) to make writing highly legible.
+- Keep responses tailored to the desired formatting (emails, essays, reports, blog posts).
+- Maintain an inspiring, constructive, and articulate voice.`,
+        color: '#00d4ff',
+        glowColor: 'rgba(0, 212, 255, 0.08)',
+        emptyStateIcon: <PenToolIcon className="w-8 h-8 text-[#00d4ff]" />,
+        suggestions: [
+          "Draft a professional email asking for project delays approval",
+          "Write a short, engaging blog post about the future of remote workspaces",
+          "Polish and rewrite a rough paragraph into a compelling pitch"
+        ]
+      },
+      code: {
+        id: 'code',
+        name: 'Coding Agent',
+        badge: 'DEV-BOT v2.6',
+        tagline: 'Full-Stack Engineering & Debugging Assistant',
+        description: 'Your interactive code companion. Writes clean code, explains algorithms, and refactors bugs.',
+        systemInstruction: `You are the WriCoRe Coding Agent, a world-class senior software engineer.
+- Provide clean, production-ready, modular, and extremely well-commented code.
+- Always specify the language used in markdown code blocks.
+- Outline logical bugs clearly, suggest corrective edits, and explain *why* the bug occurred.
+- Be concise, direct, and technically accurate.`,
+        color: '#a78bfa',
+        glowColor: 'rgba(167, 139, 250, 0.08)',
+        emptyStateIcon: <Code2Icon className="w-8 h-8 text-[#a78bfa]" />,
+        suggestions: [
+          "Write a responsive CSS flexbox layout example with modern styling",
+          "Create a JavaScript function with exponential backoff for fetching APIs",
+          "Explain the Big O complexity of quicksort vs mergesort with code snippets"
+        ]
+      },
+      research: {
+        id: 'research',
+        name: 'Research Agent',
+        badge: 'ANALYST-BOT v2.6',
+        tagline: 'Deep Analysis & Grounded Researcher',
+        description: 'Empowered with factual grounding to synthesize deep, logical reports.',
+        systemInstruction: `You are the WriCoRe Research Agent, a meticulous and objective senior research analyst.
+- Use facts and logical synthesis to formulate thorough, deeply structured reports.
+- Use Markdown headers, tables, bulleted lists, and blockquotes for scientific presentation.
+- Focus on logical, structural, and factual depth. Organize complex theories systematically.`,
+        color: '#34d399',
+        glowColor: 'rgba(52, 211, 153, 0.08)',
+        emptyStateIcon: <SearchIcon className="w-8 h-8 text-[#34d399]" />,
+        suggestions: [
+          "Compare the architectural trade-offs of Monoliths vs Microservices",
+          "Explain quantum computing principles for a non-technical audience",
+          "Create a structured research outline on renewable energy progress"
+        ]
+      }
+    };
+
+    // ==========================================
+    // MAIN APP ENTRY POINT
+    // ==========================================
+    function App() {
+      const [activeAgent, setActiveAgent] = React.useState('write');
+      const [messages, setMessages] = React.useState({
+        write: [],
+        code: [],
+        research: []
+      });
+      const [userInput, setUserInput] = React.useState('');
+      const [isLoading, setIsLoading] = React.useState(false);
+      const [errorMsg, setErrorMsg] = React.useState(null);
+      const [currentInferenceModel, setCurrentInferenceModel] = React.useState('llama-3.3-70b-versatile');
+      
+      const [isSpeaking, setIsSpeaking] = React.useState(null);
+      const [feedbacks, setFeedbacks] = React.useState({}); // format: { messageIndex: 'like' | 'dislike' }
+      const [copiedIndex, setCopiedIndex] = React.useState(null);
+      
+      const [isDemoMode, setIsDemoMode] = React.useState(false);
+
+      const chatEndRef = React.useRef(null);
+      const textareaRef = React.useRef(null);
+
+      // Auto scroll chat
+      React.useEffect(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, [messages, isLoading, activeAgent]);
+
+      // Adjust height of textarea dynamically
+      React.useEffect(() => {
+        if (textareaRef.current) {
+          textareaRef.current.style.height = 'auto';
+          textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 180)}px`;
+        }
+      }, [userInput]);
+
+      React.useEffect(() => {
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+        }
+        setIsSpeaking(null);
+      }, [activeAgent]);
+
+      const handleSpeak = (text, idx) => {
+        if ('speechSynthesis' in window) {
+          if (isSpeaking === idx) {
+            window.speechSynthesis.cancel();
+            setIsSpeaking(null);
+          } else {
+            window.speechSynthesis.cancel();
+            const cleanText = text.replace(/```[\s\S]*?```/g, '[Code block content omitted from speech]').replace(/[*#`>]/g, '');
+            const utterance = new SpeechSynthesisUtterance(cleanText);
+            utterance.onend = () => setIsSpeaking(null);
+            utterance.onerror = () => setIsSpeaking(null);
+            window.speechSynthesis.speak(utterance);
+            setIsSpeaking(idx);
+          }
+        } else {
+          setErrorMsg("Audio Speak synthesis is not supported on your current browser framework.");
+        }
+      };
+
+      const handleExportDocs = (text, idx) => {
+        try {
+          const blob = new Blob([text], { type: "text/markdown;charset=utf-8;" });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.setAttribute("download", `wricore_agent_response_${idx}.md`);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        } catch (err) {
+          setErrorMsg("Export Docs failed to download: " + err.message);
+        }
+      };
+
+      const handleDraftGmail = (text) => {
+        const textSnippet = text.length > 2500 ? text.substring(0, 2500) + "\n\n... [Truncated for link limitations]" : text;
+        const mailto = `https://mail.google.com/mail/?view=cm&fs=1&body=${encodeURIComponent(textSnippet)}`;
+        window.open(mailto, '_blank');
+      };
+
+      const handleBranchChat = (idx) => {
+        setMessages(prev => {
+          const branchedHistory = prev[activeAgent].slice(0, idx + 1);
+          return {
+            ...prev,
+            [activeAgent]: branchedHistory
+          };
+        });
+      };
+
+      const handleToggleFeedback = (idx, type) => {
+        setFeedbacks(prev => {
+          const key = `${activeAgent}_${idx}`;
+          const current = prev[key];
+          return {
+            ...prev,
+            [key]: current === type ? null : type
+          };
+        });
+      };
+
+      const agent = AGENT_CONFIGS[activeAgent];
+
+      const renderMessageContent = (text) => {
+        if (!text) return null;
+        const parts = text.split(/(```[\s\S]*?```)/g);
+        
+        return parts.map((part, index) => {
+          if (part.startsWith('```') && part.endsWith('```')) {
+            const match = part.match(/```(\w*)\n([\s\S]*?)```/);
+            const language = match ? match[1] : 'code';
+            const codeText = match ? match[2].trim() : part.slice(3, -3).trim();
+            
+            return (
+              <div key={index} className="my-3 border border-gray-800 rounded-lg overflow-hidden bg-[#0d1520] font-mono text-xs sm:text-sm">
+                <div className="flex items-center justify-between px-4 py-1.5 bg-[#162030] border-b border-gray-800 text-[#8b9ab5]">
+                  <span className="uppercase text-[10px] tracking-wider font-semibold font-sans text-[#00d4ff]">{language || 'code'}</span>
+                  <button 
+                    type="button"
+                    onClick={() => handleCopyText(codeText, index)}
+                    className="flex items-center gap-1.5 py-0.5 px-2 rounded hover:bg-gray-700 transition-colors text-xs"
+                  >
+                    {copiedIndex === index ? (
+                      <React.Fragment>
+                        <CheckIcon className="w-3.5 h-3.5 text-[#34d399]" />
+                        <span className="text-[#34d399]">Copied</span>
+                      </React.Fragment>
+                    ) : (
+                      <React.Fragment>
+                        <CopyIcon className="w-3.5 h-3.5" />
+                        <span>Copy</span>
+                      </React.Fragment>
+                    )}
+                  </button>
+                </div>
+                <pre className="p-4 overflow-x-auto text-gray-200 whitespace-pre-wrap break-all leading-relaxed">
+                  <code>{codeText}</code>
+                </pre>
+              </div>
+            );
+          } else {
+            const lines = part.split('\n');
+            return (
+              <div key={index} className="space-y-2 leading-relaxed text-gray-200">
+                {lines.map((line, lineIdx) => {
+                  if (line.startsWith('### ')) {
+                    return <h3 key={lineIdx} className="text-base font-bold mt-4 mb-2 text-white flex items-center gap-2"><SparklesIcon className="w-3.5 h-3.5 text-[#00d4ff]" />{line.substring(4)}</h3>;
+                  }
+                  if (line.startsWith('## ')) {
+                    return <h2 key={lineIdx} className="text-lg font-bold mt-4 mb-2 text-white border-b border-gray-800 pb-1">{line.substring(3)}</h2>;
+                  }
+                  if (line.startsWith('# ')) {
+                    return <h1 key={lineIdx} className="text-xl font-extrabold mt-5 mb-2 text-white">{line.substring(2)}</h1>;
+                  }
+                  
+                  if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
+                    const content = line.trim().substring(2);
+                    return (
+                      <ul key={lineIdx} className="list-disc pl-5 my-1 text-gray-300">
+                        <li>{parseInlineMarkdown(content)}</li>
+                      </ul>
+                    );
+                  }
+
+                  const numListMatch = line.trim().match(/^(\d+)\.\s(.*)/);
+                  if (numListMatch) {
+                    return (
+                      <ol key={lineIdx} className="list-decimal pl-5 my-1 text-gray-300">
+                        <li>{parseInlineMarkdown(numListMatch[2])}</li>
+                      </ol>
+                    );
+                  }
+
+                  if (line.trim().startsWith('> ')) {
+                    return (
+                      <blockquote key={lineIdx} className="border-l-3 border-[#00d4ff] pl-3 py-1 my-2 bg-gray-900/40 rounded-r text-[#8b9ab5] italic">
+                        {parseInlineMarkdown(line.trim().substring(2))}
+                      </blockquote>
+                    );
+                  }
+
+                  return line.trim() ? (
+                    <p key={lineIdx} className="my-1 text-[14.5px]">{parseInlineMarkdown(line)}</p>
+                  ) : (
+                    <div key={lineIdx} className="h-2" />
+                  );
+                })}
+              </div>
+            );
+          }
+        });
+      };
+
+      const parseInlineMarkdown = (text) => {
+        const elements = [];
+        let key = 0;
+        const boldRegex = /\*\*([^*]+)\*\*/g;
+        const inlineCodeRegex = /`([^`]+)`/g;
+
+        const allMatches = [
+          ...[...text.matchAll(boldRegex)].map(m => ({ type: 'bold', start: m.index, end: m.index + m[0].length, content: m[1] })),
+          ...[...text.matchAll(inlineCodeRegex)].map(m => ({ type: 'code', start: m.index, end: m.index + m[0].length, content: m[1] }))
+        ].sort((a, b) => a.start - b.start);
+
+        let currentIndex = 0;
+        allMatches.forEach((match) => {
+          if (match.start >= currentIndex) {
+            if (match.start > currentIndex) {
+              elements.push(<span key={key++}>{text.substring(currentIndex, match.start)}</span>);
+            }
+            if (match.type === 'bold') {
+              elements.push(<strong key={key++} className="font-semibold text-white">{match.content}</strong>);
+            } else if (match.type === 'code') {
+              elements.push(
+                <code key={key++} className="px-1.5 py-0.5 rounded bg-white/10 font-mono text-[12px] text-[#00d4ff]">
+                  {match.content}
+                </code>
+              );
+            }
+            currentIndex = match.end;
+          }
+        });
+
+        if (currentIndex < text.length) {
+          elements.push(<span key={key++}>{text.substring(currentIndex)}</span>);
+        }
+        return elements.length > 0 ? elements : text;
+      };
+
+      const handleCopyText = (text, index) => {
+        try {
+          const textArea = document.createElement("textarea");
+          textArea.value = text;
+          document.body.appendChild(textArea);
+          textArea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textArea);
+          setCopiedIndex(index);
+          setTimeout(() => setCopiedIndex(null), 2000);
+        } catch (err) {
+          console.error("Copy failed: ", err);
+        }
+      };
+
+      const handleSendMessage = async (e, suggestedPrompt = null) => {
+        if (e) e.preventDefault();
+        const promptToSend = suggestedPrompt || userInput;
+        if (!promptToSend.trim() || isLoading) return;
+
+        const userMessage = {
+          role: 'user',
+          content: promptToSend,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+
+        setMessages(prev => ({
+          ...prev,
+          [activeAgent]: [...prev[activeAgent], userMessage]
+        }));
+
+        if (!suggestedPrompt) setUserInput('');
+        setIsLoading(true);
+        setErrorMsg(null);
+
+        const currentLiveDate = new Date().toDateString();
+        const anchoredSystemInstruction = `${agent.systemInstruction}\n\n[CRITICAL TEMPORAL ANCHOR: The actual current calendar date is ${currentLiveDate}. You must strictly use this current date for any dates, reports, analyses, metadata generation, or timelines. Do not assume or hallucinate previous years.]`;
+
+        if (isDemoMode) {
+          setTimeout(() => {
+            let responseBody = "";
+            if (activeAgent === 'write') {
+              responseBody = `### Content Generation Complete\n*Prepared by WriCoRe Writing Agent (${new Date().toLocaleDateString(undefined, { month: 'long', year: 'numeric' })})*\n\nHere is your requested professional draft:\n\n> **Subject:** Response regarding "${promptToSend.substring(0, 45)}..."\n>\n> Dear Team,\n>\n> I am writing to provide an immediate update regarding our timeline adjustments. Following our recent review, we are formalizing the structure to optimize our next delivery sprint.\n>\n> Please let me know your thoughts so we can coordinate accordingly.\n\nBest regards,\n**WriCoRe Copywriter**`;
+            } else if (activeAgent === 'code') {
+              responseBody = `### Development Solution\n*Generated by WriCoRe Developer Portal (${new Date().toLocaleDateString(undefined, { month: 'long', year: 'numeric' })})*\n\nHere is a clean implementation of the requested script:\n\n\`\`\`javascript\n// Optimized function designed for ${promptToSend.replace(/`/g, '')}\nfunction handleWorkspaceExecution() {\n  const startTime = Date.now();\n  console.log("Initializing agent thread sequence...");\n  \n  return {\n    success: true,\n    timestamp: new Date().toISOString(),\n    executionTime: Date.now() - startTime\n  };\n}\n\`\`\``;
+            } else {
+              responseBody = `### Fact-Check & Research Analysis\n*Prepared by WriCoRe Research Agent (${new Date().toLocaleDateString(undefined, { month: 'long', year: 'numeric' })})*\n\nBased on synthesized logic, here is the structural breakdown of your query:\n\n1. **Core Concept Synthesis:** Your prompt focuses on deeply integrated analytical systems.\n2. **Strategic Insights:** Developing a modular framework is critical to preventing single points of failure.\n3. **Practical Timeline:** Initiating development cycles based on the real-world schedule (${currentLiveDate}) guarantees alignment with standard system delivery parameters.`;
+            }
+
+            const aiMessage = {
+              role: 'model',
+              content: responseBody,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+
+            setMessages(prev => ({
+              ...prev,
+              [activeAgent]: [...prev[activeAgent], aiMessage]
+            }));
+            setIsLoading(false);
+          }, 1100);
+          return;
+        }
+
+        const historyPayload = messages[activeAgent].map(msg => ({
+          role: msg.role === 'user' ? 'user' : 'assistant',
+          content: msg.content
+        }));
+        
+        const payloadMessages = [
+          { role: 'system', content: anchoredSystemInstruction },
+          ...historyPayload,
+          { role: 'user', content: promptToSend }
+        ];
+
+        const targetModel = GROQ_MODELS_FALLBACK[0]; 
+        setCurrentInferenceModel(targetModel);
+
+        try {
+          const response = await fetch(WORKER_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              model: targetModel,
+              messages: payloadMessages
+            })
+          });
+
+          if (!response.ok) {
+            const errDetails = await response.json();
+            throw new Error(errDetails.error || `HTTP Code ${response.status}`);
+          }
+
+          const responseData = await response.json();
+          const assistantText = responseData?.choices?.[0]?.message?.content;
+          
+          if (assistantText) {
+            const aiMessage = {
+              role: 'model',
+              content: assistantText,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+
+            setMessages(prev => ({
+              ...prev,
+              [activeAgent]: [...prev[activeAgent], aiMessage]
+            }));
+          } else {
+            throw new Error("Parsed empty token array from the proxy.");
+          }
+        } catch (err) {
+          console.error(`[WriCoRe] Connection issue: ${err.message}`);
+          
+          if (err.message === "Failed to fetch") {
+            setErrorMsg(
+              <span>
+                Network Error (Failed to fetch). This usually means your Cloudflare Worker is either not deployed yet, or the browser is blocking it due to a CORS mismatch in the preview environment. Verify your worker.js deployment and domain settings.
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    setIsDemoMode(true);
+                    setErrorMsg(null);
+                  }}
+                  className="ml-2 underline font-bold text-[#00d4ff] hover:text-[#33ddff]"
+                >
+                  Enable Offline Demo Mode
+                </button> to test the workspace interface right now.
+              </span>
+            );
+          } else {
+            setErrorMsg(err.message);
+          }
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      const handleClearChat = () => {
+        setMessages(prev => ({ ...prev, [activeAgent]: [] }));
+        setErrorMsg(null);
+      };
+
+      return (
+        <div className="relative flex flex-col flex-1 h-screen max-h-screen">
+          
+          {/* HEADER BAR */}
+          <header className="flex items-center justify-between py-4 border-b border-white/5 flex-shrink-0 relative z-10">
+            <div>
+              <div className="font-mono text-2xl font-bold tracking-tight flex items-center gap-1">
+                <span className="text-[#00d4ff]">W</span>
+                <span className="text-gray-200">ri</span>
+                <span className="text-[#a78bfa]">C</span>
+                <span className="text-gray-200">o</span>
+                <span className="text-[#34d399]">R</span>
+                <span className="text-gray-200">e</span>
+                <span className="ml-2 text-xs py-0.5 px-2 bg-[#1a2235] text-[#8b9ab5] border border-white/10 rounded-full font-sans font-medium tracking-normal">
+                  Groq Native
+                </span>
+              </div>
+              <div className="font-mono text-[10px] uppercase text-[#4a5568] tracking-widest mt-0.5">
+                Active Engine: <span className="text-white font-bold">{isDemoMode ? 'OFFLINE SIMULATION' : 'Groq High-Speed LPU'}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 sm:gap-3">
+              {isDemoMode && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDemoMode(false);
+                    setMessages(prev => ({ write: [], code: [], research: [] }));
+                  }}
+                  className="px-2.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg text-xs font-semibold font-mono"
+                  title="Click to reconnect to the live Worker proxy endpoint"
+                >
+                  DEMO ACTIVE (CLICK TO RETRY LIVE)
+                </button>
+              )}
+              <button 
+                type="button"
+                onClick={handleClearChat}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-red-500/10 hover:text-red-400 border border-white/5 hover:border-red-500/20 rounded-lg text-xs font-medium text-[#8b9ab5] transition-all"
+              >
+                <TrashIcon className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Clear Chat</span>
+              </button>
+            </div>
+          </header>
+
+          {/* THREE AGENT TABS */}
+          <nav className="grid grid-cols-3 gap-2 py-4 flex-shrink-0" role="tablist">
+            {Object.keys(AGENT_CONFIGS).map((key) => {
+              const cfg = AGENT_CONFIGS[key];
+              const isSelected = activeAgent === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => {
+                    setActiveAgent(key);
+                    setErrorMsg(null);
+                  }}
+                  className={`flex flex-col sm:flex-row items-center justify-center gap-2 p-3 sm:py-3.5 sm:px-4 rounded-xl border text-center transition-all ${
+                    isSelected ? 'text-white' : 'bg-[#111827]/40 border-white/5 text-[#8b9ab5] hover:border-white/10'
+                  }`}
+                  style={{
+                    borderColor: isSelected ? cfg.color : '',
+                    backgroundColor: isSelected ? cfg.glowColor : '',
+                    boxShadow: isSelected ? `0 4px 20px -8px ${cfg.color}` : ''
+                  }}
+                >
+                  {cfg.id === 'write' && <PenToolIcon className="w-5 h-5" style={{ color: isSelected ? cfg.color : '' }} />}
+                  {cfg.id === 'code' && <Code2Icon className="w-5 h-5" style={{ color: isSelected ? cfg.color : '' }} />}
+                  {cfg.id === 'research' && <SearchIcon className="w-5 h-5" style={{ color: isSelected ? cfg.color : '' }} />}
+                  <span className="text-xs sm:text-sm font-semibold tracking-wide">{cfg.name}</span>
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* AGENT BADGE & DESC */}
+          <div className="flex items-center gap-3 p-3 bg-[#162030]/60 border border-white/5 rounded-xl text-xs sm:text-sm text-[#8b9ab5] flex-shrink-0">
+            <span 
+              className="font-mono font-bold tracking-wider px-2 py-0.5 rounded text-[10px]" 
+              style={{ 
+                backgroundColor: `${agent.color}15`, 
+                color: agent.color,
+                border: `1px solid ${agent.color}30`
+              }}
+            >
+              {agent.badge}
+            </span>
+            <span className="truncate">{agent.description}</span>
+          </div>
+
+          {/* SYSTEM ALERTS */}
+          {errorMsg && (
+            <div className="mt-3 flex items-start gap-2.5 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs sm:text-sm text-red-300 animate-fadeIn">
+              <AlertCircleIcon className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <span className="font-bold">System Alert:</span> {errorMsg}
+              </div>
+              <button type="button" onClick={() => setErrorMsg(null)} className="text-red-400 hover:text-white font-bold ml-1">×</button>
+            </div>
+          )}
+
+          {/* MAIN CHAT AREA */}
+          <main className="flex-1 overflow-y-auto my-3 pr-1 space-y-4 min-h-0 flex flex-col relative z-10">
+            {messages[activeAgent].length === 0 ? (
+              
+              /* EMPTY CHAT SHELL */
+              <div className="flex-1 flex flex-col items-center justify-center py-8 text-center my-auto">
+                <div 
+                  className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 border transition-all"
+                  style={{
+                    borderColor: `${agent.color}30`,
+                    backgroundColor: `${agent.color}10`,
+                    boxShadow: `0 8px 24px -10px ${agent.color}`
+                  }}
+                >
+                  {agent.emptyStateIcon}
+                </div>
+                <h2 className="text-xl font-bold text-white mb-1">{agent.name} Enabled</h2>
+                <p className="text-[#8b9ab5] text-sm max-w-sm mb-6 leading-relaxed">
+                  {agent.tagline}. Pick a prompt template below or start messaging.
+                </p>
+
+                <div className="w-full max-w-lg grid grid-cols-1 gap-2.5">
+                  {agent.suggestions.map((suggestion, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleSendMessage(null, suggestion)}
+                      className="p-3 text-left bg-[#111827]/40 hover:bg-[#1a2235]/60 border border-white/5 hover:border-[#00d4ff]/20 rounded-xl text-xs sm:text-sm text-[#8b9ab5] hover:text-white transition-all flex items-center justify-between group"
+                    >
+                      <span className="line-clamp-1 pr-4">{suggestion}</span>
+                      <ArrowUpRightIcon className="w-4 h-4 text-gray-500 group-hover:text-[#00d4ff] flex-shrink-0" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              
+              /* ACTIVE MESSAGES STREAM */
+              <div className="space-y-4 pb-2">
+                {messages[activeAgent].map((msg, idx) => {
+                  const feedbackKey = `${activeAgent}_${idx}`;
+                  const currentFeedback = feedbacks[feedbackKey];
+
+                  return (
+                    <div 
+                      key={idx} 
+                      className={`flex gap-3 max-w-[85%] ${msg.role === 'user' ? 'ml-auto flex-row-reverse' : 'mr-auto'}`}
+                    >
+                      <div 
+                        className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center font-mono text-[11px] font-bold border ${
+                          msg.role === 'user' ? 'bg-[#1a2235] border-white/10 text-[#8b9ab5]' : 'bg-[#111827] border-white/5'
+                        }`}
+                        style={{
+                          borderColor: msg.role === 'model' ? `${agent.color}25` : '',
+                          color: msg.role === 'model' ? agent.color : ''
+                        }}
+                      >
+                        {msg.role === 'user' ? 'ME' : 'AI'}
+                      </div>
+
+                      <div className="space-y-1">
+                        <div 
+                          className={`p-4 rounded-2xl text-[14.5px] leading-relaxed border ${
+                            msg.role === 'user'
+                              ? 'bg-[#1a2235]/40 border-white/5 text-gray-100 rounded-tr-sm'
+                              : 'bg-[#111827]/80 border-white/5 text-gray-200 rounded-tl-sm'
+                          }`}
+                        >
+                          {msg.role === 'user' ? (
+                            <p className="whitespace-pre-wrap">{msg.content}</p>
+                          ) : (
+                            renderMessageContent(msg.content)
+                          )}
+                        </div>
+
+                        {/* UTILITY BAR WITH ADAPTIVE COPY & THUMBS */}
+                        {msg.role === 'model' && (
+                          <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px] text-[#8b9ab5] animate-fadeIn">
+                            {/* Like (Thumbs Up) */}
+                            <button 
+                              type="button"
+                              onClick={() => handleToggleFeedback(idx, 'like')}
+                              className={`flex items-center justify-center p-1.5 rounded transition-all ${
+                                currentFeedback === 'like' ? 'bg-[#34d399]/20 text-[#34d399]' : 'bg-white/5 hover:bg-white/10 hover:text-white'
+                              }`}
+                              title="Like response"
+                            >
+                              <ThumbsUpIcon className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Dislike (Thumbs Down) */}
+                            <button 
+                              type="button"
+                              onClick={() => handleToggleFeedback(idx, 'dislike')}
+                              className={`flex items-center justify-center p-1.5 rounded transition-all ${
+                                currentFeedback === 'dislike' ? 'bg-red-500/20 text-red-400' : 'bg-white/5 hover:bg-white/10 hover:text-white'
+                              }`}
+                              title="Dislike response"
+                            >
+                              <ThumbsDownIcon className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Copy Text */}
+                            <button 
+                              type="button"
+                              onClick={() => handleCopyText(msg.content, idx)}
+                              className="flex items-center gap-1 px-2 py-1 rounded bg-white/5 hover:bg-white/10 hover:text-white transition-all text-[11px]"
+                              title="Copy response body"
+                            >
+                              {copiedIndex === idx ? (
+                                <>
+                                  <CheckIcon className="w-3 h-3 text-[#34d399]" />
+                                  <span className="text-[#34d399]">Copied</span>
+                                </>
+                              ) : (
+                                <>
+                                  <CopyIcon className="w-3 h-3" />
+                                  <span>Copy</span>
+                                </>
+                              )}
+                            </button>
+
+                            {/* Listen (Read Aloud) */}
+                            <button 
+                              type="button"
+                              onClick={() => handleSpeak(msg.content, idx)}
+                              className="flex items-center gap-1 px-2 py-1 rounded bg-white/5 hover:bg-white/10 hover:text-white transition-all text-[11px]"
+                              title="Listen (Read Aloud)"
+                            >
+                              <Volume2Icon className={`w-3.5 h-3.5 ${isSpeaking === idx ? 'text-[#00d4ff] animate-pulse' : ''}`} />
+                              <span className={isSpeaking === idx ? 'text-[#00d4ff] font-medium' : ''}>{isSpeaking === idx ? 'Stop Speech' : 'Listen'}</span>
+                            </button>
+
+                            {/* Export Docs */}
+                            <button 
+                              type="button"
+                              onClick={() => handleExportDocs(msg.content, idx)}
+                              className="flex items-center gap-1 px-2 py-1 rounded bg-white/5 hover:bg-white/10 hover:text-white transition-all text-[11px]"
+                              title="Export to Markdown Docs File"
+                            >
+                              <FileTextIcon className="w-3.5 h-3.5" />
+                              <span>Export Docs</span>
+                            </button>
+
+                            {/* Draft in Gmail */}
+                            <button 
+                              type="button"
+                              onClick={() => handleDraftGmail(msg.content)}
+                              className="flex items-center gap-1 px-2 py-1 rounded bg-white/5 hover:bg-white/10 hover:text-white transition-all text-[11px]"
+                              title="Draft inside Gmail Compose"
+                            >
+                              <MailIcon className="w-3.5 h-3.5" />
+                              <span>Gmail</span>
+                            </button>
+
+                            {/* Branch chat */}
+                            <button 
+                              type="button"
+                              onClick={() => handleBranchChat(idx)}
+                              className="flex items-center gap-1 px-2 py-1 rounded bg-white/5 hover:bg-white/10 hover:text-white transition-all text-[11px]"
+                              title="Branch/Fork chat timeline from this point"
+                            >
+                              <GitBranchIcon className="w-3.5 h-3.5" />
+                              <span>Branch Here</span>
+                            </button>
+                          </div>
+                        )}
+
+                        <div className={`text-[10px] text-[#4a5568] ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
+                          {msg.timestamp}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {isLoading && (
+                  <div className="flex gap-3 max-w-[80%] mr-auto animate-pulse">
+                    <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center font-mono text-[11px] font-bold border bg-[#111827]" style={{ borderColor: `${agent.color}25`, color: agent.color }}>
+                      AI
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1 px-4 py-3 rounded-2xl bg-[#111827]/80 border border-white/5 rounded-tl-sm">
+                        <span className="w-1.5 h-1.5 rounded-full bg-gray-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <span className="w-1.5 h-1.5 rounded-full bg-gray-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <span className="w-1.5 h-1.5 rounded-full bg-gray-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            <div ref={chatEndRef} />
+          </main>
+
+          {/* INPUT CONTROLS */}
+          <div className="py-4 border-t border-white/5 flex-shrink-0 relative z-10">
+            <form onSubmit={handleSendMessage} className="relative bg-[#0d1520] border border-white/10 focus-within:border-[#00d4ff]/50 rounded-2xl p-2 transition-all">
+              <textarea
+                ref={textareaRef}
+                rows="1"
+                value={userInput}
+                onChange={(e) => setUserInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage(e);
+                  }
+                }}
+                placeholder={`Send your query to ${agent.name}...`}
+                className="w-full bg-transparent border-none outline-none resize-none text-[14.5px] text-[#f0f4f8] placeholder-gray-500 max-h-[180px] py-2 px-3 focus:ring-0 leading-relaxed font-sans"
+                maxLength={8000}
+              />
+
+              <div className="flex items-center justify-between pt-1 border-t border-white/5 px-2 mt-1 text-[11px] text-[#4a5568]">
+                <span className="font-medium font-mono text-[#8b9ab5]">
+                  Active: <span style={{ color: agent.color }} className="font-bold">{agent.name}</span>
+                </span>
+                <div className="flex items-center gap-3">
+                  <span className="font-mono">{userInput.length} / 8000</span>
+                  <button
+                    type="submit"
+                    disabled={!userInput.trim() || isLoading}
+                    className="flex items-center justify-center w-8 h-8 rounded-xl bg-[#00d4ff] text-[#0b0f19] hover:bg-[#33ddff] disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+                    style={{
+                      backgroundColor: userInput.trim() ? agent.color : '',
+                      color: '#0b0f19'
+                    }}
+                  >
+                    <SendIcon className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </form>
+            <div className="flex items-center gap-1.5 mt-2.5 px-1 justify-center">
+              <InfoIcon className="w-3.5 h-3.5 text-gray-600" />
+              <span className="text-[10px] text-gray-500 text-center font-mono uppercase tracking-wider">
+                Direct client-side interface powered by Groq LPUs. Fully configured and operational on load.
+              </span>
+            </div>
+            
+            <footer className="mt-3 pt-2.5 border-t border-white/5 text-center">
+              <p className="text-[11px] text-gray-500 hover:text-gray-400 transition-colors font-sans tracking-wide">
+                © 2026 James Earl C. Felipe. Built with Claude and Gemini.
+              </p>
+            </footer>
+          </div>
+
+        </div>
+      );
+    }
+
+    const container = document.getElementById('root');
+    const root = ReactDOM.createRoot(container);
+    root.render(<App />);
+  </script>
+</body>
+</html>
