@@ -1,14 +1,14 @@
-[README.md](https://github.com/user-attachments/files/28490353/README.md)
+[README.md](https://github.com/user-attachments/files/28417612/README.md)
 # WriCoRe — Write · Code · Research
-**A free AI-powered multi-agent workspace with Writing, Coding, and Research agents — no API key needed.**
+**A Multi-LLM AI workspace with three specialized agents — built for people who think better with a thinking partner.**
 
-![Status](https://img.shields.io/badge/status-active-brightgreen) ![Version](https://img.shields.io/badge/version-2.6-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Powered by Groq](https://img.shields.io/badge/powered%20by-Groq-orange)
+![Status](https://img.shields.io/badge/status-active-brightgreen) ![Version](https://img.shields.io/badge/version-2.6-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Multi-LLM](https://img.shields.io/badge/Multi--LLM-4%20Providers-purple)
 
 ---
 
 ## What Is WriCoRe?
 
-WriCoRe brings three specialized AI agents into one clean, focused workspace. No sign-up. No API key. No setup. Just open and start working.
+WriCoRe brings three specialized AI agents into one clean, focused workspace — powered by your choice of AI provider. No switching between tools, no re-explaining context, no setup friction. Just start.
 
 | Agent | Role | Best For |
 |-------|------|----------|
@@ -22,61 +22,101 @@ Each agent has its own purpose-built system prompt, starter prompts, and AI safe
 
 ## 🚀 Live Demo
 
-👉 **[Try WriCoRe Live — Free, No Sign-up](https://james75x2-design.github.io/wricore-workspace)**
+👉 **[Try WriCoRe Live](https://james75x2-design.github.io/wricore-workspace)**
 
-> Powered by Groq's free API. Just open and start working.
+> No account needed. Just bring a free API key — see below for how to get one in 2 minutes.
 
 ---
 
-## 💡 Why I Built This
+## 🔑 Getting a Free API Key
 
-I'm an externalizer — someone who thinks more clearly by working things through with a thinking partner rather than having ideas pre-formed in my head.
+You don't need to pay anything to use WriCoRe. Two free options:
 
-For years, getting started on complex tasks felt slow and frustrating. AI changed that. But jumping between different tools, re-explaining context each time, and figuring out how to prompt a general chatbot for a specific task added friction back in.
+**Option 1 — OpenRouter (Recommended)**
+- Go to [openrouter.ai](https://openrouter.ai)
+- Sign up for a free account
+- Go to API Keys → Create Key
+- No credit card required
+- Access to multiple free models including Llama, Gemma, Qwen, and Kimi
 
-WriCoRe removes that friction. One workspace. Three focused agents. No setup. Just start.
+**Option 2 — Groq**
+- Go to [console.groq.com](https://console.groq.com)
+- Sign up for a free account
+- Go to API Keys → Create API Key
+- No credit card required
+- Extremely fast inference — some of the fastest free models available
+
+Once you have your key, paste it into WriCoRe's Connect modal and select your provider. Done.
+
+---
+
+## 🤖 Supported AI Providers
+
+WriCoRe v2.6 supports four AI backends — switch anytime:
+
+| Provider | Free Tier | Best For |
+|----------|-----------|----------|
+| **Google Gemini** | Yes (limited) | Research agent with live Google Search grounding |
+| **OpenRouter** | Yes | Access to 7+ free models in one place |
+| **Groq** | Yes | Ultra-fast responses — 500-840+ tokens/second |
+| **GitHub Models** | Yes (with GitHub account) | Access to GPT-5, o4-mini, Phi-4 |
+
+---
+
+## ✨ Features
+
+- Three specialized AI agents — Writing, Coding, Research
+- Four AI provider options — Gemini, OpenRouter, Groq, GitHub Models
+- Purpose-built system prompts — no generic chatbot vagueness
+- AI safeguards built into every agent
+- Starter prompts to help you get moving immediately
+- Text-to-speech — listen to any response read aloud
+- Export to Markdown — download any response as a .md file
+- Draft to Gmail — send any response directly to Gmail
+- Branch chat — rewind and restart from any message
+- Feedback buttons — thumbs up/down on every response
+- Session management — clear and restart instantly
+- Clean dark UI — focused and distraction-free
+- Runs entirely in the browser — no server, no data collection
+
+---
+
+## 🔒 Security & Privacy
+
+WriCoRe stores your API key in your browser's localStorage — on your own device only. Your key is never sent to any WriCoRe server because there isn't one. All API calls go directly from your browser to your chosen AI provider.
+
+**Recommendations:**
+- Don't use WriCoRe on shared or public computers
+- Use provider-level key restrictions where available (e.g. domain restrictions)
+- Revoke and regenerate your key anytime from your provider's dashboard
+
+For a production deployment, server-side key management would be implemented. WriCoRe is currently a portfolio and personal productivity project.
 
 ---
 
 ## 🛠️ How It's Built
 
-- **Single-file HTML app** — no framework dependencies, runs in any browser
-- **Groq API** — ultra-fast free inference powering all three agents (llama-3.3-70b-versatile)
-- **Purpose-built prompt engineering** — each agent has custom system instructions, safeguards, and starter prompts
+- **Single-file HTML app** — React 18, Tailwind CSS, Babel — no build step required
+- **Multi-provider API architecture** — Gemini, OpenRouter, Groq, GitHub Models
 - **Exponential backoff** — automatic retry logic for network failures
 - **Custom markdown renderer** — renders AI output as clean formatted text with syntax-highlighted code blocks
+- **Text-to-speech engine** — Web Speech API with markdown stripping for clean audio
 - **Client-side only** — no backend, no database, no tracking
-- **Text-to-speech** — listen to any response read aloud
-- **Export to Markdown** — download any response as a .md file
-- **Branch chat** — rewind and restart from any message in the conversation
-
----
-
-## ✨ Key Features
-
-- Three specialized AI agents — Writing, Coding, Research
-- Completely free — no API key required from users
-- Powered by Groq — some of the fastest free AI inference available
-- Purpose-built prompts — no generic chatbot vagueness
-- AI safeguards built into every agent
-- Starter prompts to help you get moving immediately
-- Text-to-speech, markdown export, branch chat
-- Clean dark UI — focused and distraction-free
-- Runs entirely in the browser — no server, no data collection
 
 ---
 
 ## 🚦 Getting Started
 
 ### Option 1 — Use the Live Version
-Click the live demo link above. No installation, no sign-up, no API key needed.
+Click the live demo link above. No installation needed.
 
-### Option 2 — Run Locally with Your Own Groq Key
+### Option 2 — Run Locally
 ```bash
 git clone https://github.com/james75x2-design/wricore-workspace.git
 cd wricore-workspace
+open index.html
 ```
-Open `index.html`, find `const GROQ_API_KEY = 'your-key-here'` at the top of the script, and replace with your own free Groq key from [console.groq.com](https://console.groq.com). Open in any modern browser.
+Open in any modern browser. Enter your API key in the Connect modal. Start working.
 
 ---
 
@@ -88,6 +128,24 @@ Open `index.html`, find `const GROQ_API_KEY = 'your-key-here'` at the top of the
 - [ ] MCP integration for enterprise workflow connectivity
 - [ ] Custom system prompt editor — let users define their own agents
 - [ ] Integration with AGAD — Assisted Generation of Approval Documents
+
+---
+
+## 💡 Why I Built This
+
+I'm an externalizer — someone who thinks more clearly by working things through with a thinking partner rather than having ideas pre-formed in my head.
+
+For years, getting started on complex tasks felt slow and frustrating. AI changed that. But jumping between different tools, re-explaining context each time, and figuring out how to prompt a general chatbot for a specific task added friction back in.
+
+WriCoRe removes that friction. One workspace. Three focused agents. Four AI providers. No setup. Just start.
+
+---
+
+## 🔗 Related Projects
+
+**AGAD — Assisted Generation of Approval Documents** *(In Development)*
+An AI-powered tool helping Filipino patients and their families navigate hospital LOA and insurance approval processes — built from direct personal experience with the problem. Designed for the exhausted family member standing in a hospital billing queue at 3am, trying to navigate a system they don't understand.
+*Repository coming soon.*
 
 ---
 
@@ -107,4 +165,4 @@ MIT License — free to use, modify, and share with attribution.
 
 ---
 
-*© 2026 James Earl C. Felipe. Built with Claude and Gemini. Designed for thinkers.*
+*Built with Claude and Gemini. Designed for thinkers.*
