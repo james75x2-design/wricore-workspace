@@ -1,590 +1,1439 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WriCoRe — Dual Engine AI Workspace</title>
-
-  <!-- Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- React 18 & ReactDOM 18 CDN links (jsdelivr — more reliably reachable than unpkg
-       behind ad-blockers, corporate proxies, and sandboxed preview tools) -->
-  <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js" crossorigin></script>
-  <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-
-  <!-- Babel Compiler for compiling JSX dynamically in-browser -->
-  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7/babel.min.js"></script>
-
-  <!-- Custom Configuration for Tailwind -->
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['DM Sans', 'sans-serif'],
-            mono: ['IBM Plex Mono', 'monospace'],
-          },
-          borderWidth: {
-            '3': '3px'
-          }
-        }
-      }
-    }
-  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VoyageFlow — Your AI Travel Agent</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,700;1,400&display=swap" rel="stylesheet">
 
   <style>
-    /* Custom Scrollbar Styles */
-    ::-webkit-scrollbar { width: 4px; height: 4px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.08); border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: rgba(0, 212, 255, 0.2); }
-    .glow-card { position: relative; }
-    .glow-card::before {
-      content: '';
+    :root {
+      --bg-color: #0a1628;
+      --surface-color: #0f2040;
+      --elevated-color: #162d52;
+      --primary-accent: #ff6b35;
+      --primary-accent-hover: #e0531f;
+      --secondary-color: #00b4d8;
+      --text-primary: #f0f4f8;
+      --text-secondary: #8ba3c1;
+      --muted-color: #3d5a80;
+      --success-color: #4ecdc4;
+      --error-color: #ff4d4d;
+      --border-gradient: linear-gradient(135deg, var(--primary-accent), var(--secondary-color));
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* Ambient Ocean-Aurora Animated Background */
+    body::before {
+      content: "";
       position: absolute;
-      inset: 0;
-      border-radius: inherit;
-      padding: 1px;
-      background: linear-gradient(to bottom, rgba(255,255,255,0.1), rgba(255,255,255,0.02));
-      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-      -webkit-mask-composite: xor;
-      mask-composite: exclude;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle at 30% 30%, #102a45 0%, transparent 40%),
+                  radial-gradient(circle at 75% 65%, #0d2c3e 0%, transparent 45%);
+      animation: aurora 25s ease-in-out infinite alternate;
+      z-index: -1;
       pointer-events: none;
+    }
+
+    @keyframes aurora {
+      0% { transform: translate(0, 0) rotate(0deg); }
+      50% { transform: translate(-50px, 30px) rotate(10deg); }
+      100% { transform: translate(0, 0) rotate(0deg); }
+    }
+
+    .app-container {
+      max-width: 900px;
+      width: 100%;
+      height: 100vh;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      padding: 0 16px;
+      position: relative;
+    }
+
+    header {
+      padding: 18px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(8px);
+      background: rgba(10, 22, 40, 0.7);
+      z-index: 10;
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-icon {
+      width: 32px;
+      height: 32px;
+      stroke: var(--primary-accent);
+      stroke-width: 2;
+      fill: none;
+      animation: gentle-bob 4s ease-in-out infinite;
+    }
+
+    @keyframes gentle-bob {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-3px); }
+    }
+
+    .brand-details {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .logo-text {
+      font-family: 'Playfair Display', serif;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: var(--text-primary);
+      line-height: 1.2;
+    }
+
+    .tagline {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-secondary);
+    }
+
+    .btn-new-trip {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: var(--text-primary);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-new-trip:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: var(--secondary-color);
+      color: var(--secondary-color);
+    }
+
+    main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+    }
+
+    main::-webkit-scrollbar {
+      width: 6px;
+    }
+    main::-webkit-scrollbar-thumb {
+      background-color: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+    }
+
+    /* Empty/Welcome State */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 40px 20px;
+      margin: auto 0;
+    }
+
+    .rotating-compass {
+      width: 110px;
+      height: 110px;
+      margin-bottom: 24px;
+      stroke: var(--secondary-color);
+      stroke-width: 1.5;
+      fill: none;
+      filter: drop-shadow(0 0 15px rgba(0, 180, 216, 0.3));
+      animation: spin 30s linear infinite;
+    }
+
+    @keyframes spin {
+      100% { transform: rotate(360deg); }
+    }
+
+    .empty-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 32px;
+      margin-bottom: 10px;
+      color: var(--text-primary);
+    }
+
+    .empty-subtitle {
+      font-size: 15px;
+      color: var(--text-secondary);
+      margin-bottom: 32px;
+      max-width: 480px;
+      line-height: 1.5;
+    }
+
+    .suggestions-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      width: 100%;
+      max-width: 600px;
+    }
+
+    @media (max-width: 600px) {
+      .suggestions-grid {
+        grid-template-columns: 1fr;
+      }
+      .empty-title {
+        font-size: 26px;
+      }
+    }
+
+    .suggestion-chip {
+      background: var(--surface-color);
+      border: 1px solid rgba(0, 180, 216, 0.15);
+      border-radius: 12px;
+      padding: 14px 18px;
+      font-size: 13px;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      text-align: left;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .suggestion-chip:hover {
+      border-color: var(--primary-accent);
+      background: rgba(255, 107, 53, 0.05);
+      transform: translateY(-2px);
+    }
+
+    .chat-row {
+      display: flex;
+      width: 100%;
+      margin-bottom: 4px;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .chat-row.user {
+      justify-content: flex-end;
+    }
+
+    .chat-row.model {
+      justify-content: flex-start;
+      gap: 12px;
+    }
+
+    .avatar-icon {
+      width: 36px;
+      height: 36px;
+      min-width: 36px;
+      border-radius: 50%;
+      background: var(--elevated-color);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      stroke: var(--secondary-color);
+      stroke-width: 2;
+      fill: none;
+    }
+
+    .bubble {
+      max-width: 75%;
+      padding: 16px 20px;
+      font-size: 15px;
+      line-height: 1.6;
+      word-wrap: break-word;
+    }
+
+    @media (max-width: 600px) {
+      .bubble {
+        max-width: 85%;
+      }
+    }
+
+    .user .bubble {
+      background: rgba(0, 180, 216, 0.08);
+      border: 1px solid rgba(0, 180, 216, 0.25);
+      border-radius: 18px 18px 4px 18px;
+      color: var(--text-primary);
+    }
+
+    .model .bubble {
+      background: rgba(15, 32, 64, 0.7);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 18px 18px 18px 4px;
+      color: var(--text-primary);
+    }
+
+    .bubble p {
+      margin-bottom: 12px;
+    }
+    .bubble p:last-child {
+      margin-bottom: 0;
+    }
+    .bubble h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 24px;
+      font-weight: 700;
+      margin: 22px 0 12px 0;
+      color: var(--text-primary);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 6px;
+    }
+    .bubble h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 20px;
+      font-weight: 700;
+      margin: 20px 0 10px 0;
+      color: var(--text-primary);
+    }
+    .bubble h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin: 16px 0 8px 0;
+      color: var(--secondary-color);
+    }
+    .bubble ul, .bubble ol {
+      margin: 10px 0 16px 20px;
+    }
+    .bubble li {
+      margin-bottom: 8px;
+      line-height: 1.5;
+    }
+    .bubble hr {
+      border: none;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      margin: 16px 0;
+    }
+    .bubble strong {
+      color: var(--secondary-color);
+      font-weight: 600;
+    }
+    .bubble em {
+      font-style: italic;
+    }
+    
+    .bubble code {
+      font-family: monospace;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13.5px;
+    }
+    .bubble pre {
+      background: rgba(0, 0, 0, 0.25);
+      padding: 12px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 12px 0;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .bubble pre code {
+      background: transparent;
+      padding: 0;
+      border-radius: 0;
+    }
+
+    .booking-summary-card {
+      margin-top: 18px;
+      background: var(--surface-color);
+      border-radius: 14px;
+      padding: 20px;
+      border: 1px solid rgba(255, 107, 53, 0.2);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      animation: fadeIn 0.4s ease;
+    }
+
+    .booking-card-header {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 10px;
+    }
+
+    .booking-details-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    @media (max-width: 480px) {
+      .booking-details-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .detail-item {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      padding: 10px 14px;
+    }
+
+    .detail-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+
+    .detail-value {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    /* Action Booking Desk Grid */
+    .booking-action-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    @media (max-width: 540px) {
+      .booking-action-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .booking-action-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-primary);
+      padding: 12px 14px;
+      border-radius: 20px;
+      font-size: 13.5px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .booking-action-btn.hotels {
+      border-color: var(--secondary-color);
+      background: rgba(0, 180, 216, 0.05);
+    }
+    .booking-action-btn.hotels:hover {
+      background: var(--secondary-color);
+      color: #050b15;
+    }
+
+    .booking-action-btn.flights {
+      border-color: var(--primary-accent);
+      background: rgba(255, 107, 53, 0.05);
+    }
+    .booking-action-btn.flights:hover {
+      background: var(--primary-accent);
+      color: #ffffff;
+    }
+
+    .booking-action-btn.experiences {
+      border-color: #e28743;
+      background: rgba(226, 135, 67, 0.05);
+    }
+    .booking-action-btn.experiences:hover {
+      background: #e28743;
+      color: #050b15;
+    }
+
+    .booking-action-btn.insurance {
+      border-color: var(--success-color);
+      background: rgba(78, 205, 196, 0.05);
+    }
+    .booking-action-btn.insurance:hover {
+      background: var(--success-color);
+      color: #050b15;
+    }
+
+    .booking-action-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    }
+
+    .booking-disclaimer {
+      font-size: 11px;
+      color: var(--text-secondary);
+      text-align: center;
+      margin-top: 10px;
+      font-style: italic;
+    }
+
+    .typing-indicator {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      padding: 10px 14px;
+    }
+
+    .typing-dot {
+      width: 8px;
+      height: 8px;
+      background-color: var(--secondary-color);
+      border-radius: 50%;
+      animation: bounce 1.4s infinite ease-in-out both;
+    }
+
+    .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+    .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: scale(0); }
+      40% { transform: scale(1.0); }
+    }
+
+    .input-wrapper {
+      padding: 14px 0;
+      background: transparent;
+      position: relative;
+    }
+
+    /* System Alert Banner */
+    .error-banner {
+      background: rgba(255, 77, 77, 0.12);
+      border: 1px solid rgba(255, 77, 77, 0.3);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 12px;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      animation: slideUp 0.25s ease;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .error-msg {
+      font-size: 13.5px;
+      color: #ff9999;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .error-close {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .error-close:hover {
+      color: var(--text-primary);
+    }
+
+    .input-bar {
+      display: flex;
+      align-items: flex-end;
+      background: var(--surface-color);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 24px;
+      padding: 8px 12px 8px 18px;
+      gap: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .input-bar:focus-within {
+      border-color: var(--secondary-color);
+      box-shadow: 0 0 12px rgba(0, 180, 216, 0.15);
+    }
+
+    textarea {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-primary);
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      resize: none;
+      max-height: 120px;
+      height: 24px;
+      line-height: 1.5;
+      padding: 2px 0;
+    }
+
+    textarea::placeholder {
+      color: var(--text-secondary);
+      transition: opacity 0.3s ease;
+    }
+
+    .input-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .char-counter {
+      font-size: 11px;
+      color: var(--muted-color);
+      font-weight: 500;
+    }
+
+    .btn-send {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--primary-accent);
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-send:hover:not(:disabled) {
+      background: var(--primary-accent-hover);
+      transform: scale(1.05);
+    }
+
+    .btn-send:disabled {
+      background: var(--muted-color);
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    .btn-send svg {
+      width: 18px;
+      height: 18px;
+      fill: #ffffff;
+    }
+
+    footer {
+      text-align: center;
+      padding-bottom: 12px;
+      font-size: 11px;
+      color: var(--text-secondary);
+      opacity: 0.8;
+      line-height: 1.4;
+    }
+
+    /* Custom Reset Dialog Box */
+    .custom-dialog-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(5, 11, 21, 0.85);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+
+    .custom-dialog {
+      background: var(--surface-color);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 24px;
+      max-width: 440px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .custom-dialog h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 22px;
+      margin-bottom: 12px;
+    }
+
+    .custom-dialog p {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+
+    .dialog-buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+    }
+
+    .dialog-btn {
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-weight: 500;
+      font-size: 13.5px;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s ease;
+    }
+
+    .dialog-btn.cancel {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-primary);
+    }
+
+    .dialog-btn.cancel:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .dialog-btn.confirm {
+      background: var(--primary-accent);
+      color: #ffffff;
+    }
+
+    .dialog-btn.confirm:hover {
+      background: var(--primary-accent-hover);
     }
   </style>
 </head>
-<body class="bg-[#0b0f19] text-[#f0f4f8] antialiased overflow-x-hidden min-h-screen">
+<body>
 
-  <div id="root">
-    <!-- Initial Loading State -->
-    <div style="display:flex; justify-content:center; align-items:center; height:100vh; font-family: monospace; color:#00d4ff;">
-      Compiling WriCoRe Dual-Engine Interface...
+  <div class="app-container">
+    <header role="banner">
+      <div class="logo-container" id="brand-logo-trigger">
+        <svg class="logo-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M16.2 7.8l-2 6.2-6.2 2 2-6.2 6.2-2z" fill="currentColor" opacity="0.3"/>
+          <path d="M16.2 7.8l-2 6.2-6.2 2 2-6.2 6.2-2z" />
+          <circle cx="12" cy="12" r="1" fill="currentColor" />
+        </svg>
+        <div class="brand-details">
+          <span class="logo-text">VoyageFlow</span>
+          <span class="tagline">AI Travel Agent · Free</span>
+        </div>
+      </div>
+      <button class="btn-new-trip" id="new-trip-btn" aria-label="Start a new search session">
+        <span>Reset Search</span>
+      </button>
+    </header>
+
+    <main id="chat-scroller" role="log" aria-live="polite">
+      
+      <div class="empty-state" id="empty-state-container">
+        <svg class="rotating-compass" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 2v2M12 20v2M2 12h2M20 12h2" />
+          <path d="M16.2 7.8l-2 6.2-6.2 2 2-6.2z" fill="var(--primary-accent)" />
+          <circle cx="12" cy="12" r="1.5" />
+        </svg>
+        
+        <h1 class="empty-title" id="welcome-heading">Where to next?</h1>
+        <p class="empty-subtitle" id="welcome-subheading">Your ultimate premium AI travel assistant. Tell me where you want to go, when you're traveling, and who is joining—I'll generate your customized day-by-day itineraries and direct booking suites instantly!</p>
+        
+        <div class="suggestions-grid" id="suggestions-grid-target" role="group" aria-label="Quick start options"></div>
+      </div>
+
+      <div id="messages-target" style="display: flex; flex-direction: column; gap: 20px; width: 100%;"></div>
+
+    </main>
+
+    <div class="input-wrapper">
+      
+      <div class="error-banner" id="error-banner" role="alert">
+        <div class="error-msg">
+          <span id="error-symbol">⚠️</span>
+          <span id="error-text">Connection issue — please check your internet</span>
+        </div>
+        <button class="error-close" id="error-close-btn" aria-label="Close error message">×</button>
+      </div>
+
+      <form id="chat-form" onsubmit="event.preventDefault(); handleFormSubmit();">
+        <div class="input-bar">
+          <textarea id="chat-input" placeholder="Ask me anything about your next trip..." maxlength="4000" rows="1" aria-label="Message to VoyageFlow AI Travel Agent"></textarea>
+          <div class="input-actions">
+            <span class="char-counter" id="char-counter">0/4000</span>
+            <button class="btn-send" id="send-btn" type="submit" disabled aria-label="Send Message">
+              <svg viewBox="0 0 24 24">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <footer role="contentinfo">
+      VoyageFlow connects securely to Cloudflare Workers to plan, coordinate, and streamline your custom travel itineraries.
+    </footer>
+
+  </div>
+
+  <div class="custom-dialog-overlay" id="custom-dialog-overlay" role="dialog" aria-modal="true" aria-labelledby="dialog-title" aria-describedby="dialog-desc">
+    <div class="custom-dialog">
+      <h3 id="dialog-title">Clear Active Session?</h3>
+      <p id="dialog-desc">This will reset your conversation history and let you start a fresh itinerary.</p>
+      <div class="dialog-buttons">
+        <button class="dialog-btn cancel" id="dialog-cancel-btn">Go Back</button>
+        <button class="dialog-btn confirm" id="dialog-confirm-btn">Confirm Reset</button>
+      </div>
     </div>
   </div>
 
-  <!-- 
-    CRITICAL FIX: By using type="text/jsx-source", we hide the code from the previewer's buggy 
-    internal AST scanner that was causing the import/export module crashes. 
-    A manual compiler script at the bottom of the page safely extracts and executes this block.
-  -->
-  <script type="text/jsx-source" id="wricore-app">
-    const { useState, useEffect, useRef, Fragment } = React;
+  <script>
+    // ==========================================
+    // BACKEND CLOUDFLARE WORKER URL
+    // Points to your active Cloudflare Worker endpoint
+    // ==========================================
+    const WORKER_URL = 'https://voyageflow.james75x2.workers.dev/';
 
-    const PenToolIcon = ({ className, ...props }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>);
-    const Volume2Icon = ({ className, ...props }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" /><path d="M19.07 4.93a10 10 0 0 1 0 14.14" /><path d="M15.54 8.46a5 5 0 0 1 0 7.07" /></svg>);
-    const FileTextIcon = ({ className, ...props }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>);
-    const MailIcon = ({ className, ...props }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>);
-    const GitBranchIcon = ({ className, ...props }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}><line x1="6" y1="3" x2="6" y2="15" /><circle cx="18" cy="6" r="3" /><circle cx="6" cy="18" r="3" /><path d="M18 9a9 9 0 0 1-9 9" /></svg>);
-    const Code2Icon = ({ className, ...props }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /></svg>);
-    const SearchIcon = ({ className, ...props }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>);
-    const SendIcon = ({ className, ...props }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>);
-    const TrashIcon = ({ className, ...props }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>);
-    const CheckIcon = ({ className, ...props }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="20 6 9 17 4 12" /></svg>);
-    const ArrowUpRightIcon = ({ className, ...props }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><line x1="7" y1="17" x2="17" y2="7" /><polyline points="7 7 17 7 17 17" /></svg>);
-    const SparklesIcon = ({ className, ...props }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m11.314 11.314l.707-.707" /></svg>);
-    const AlertCircleIcon = ({ className, ...props }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>);
-    const CopyIcon = ({ className, ...props }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>);
-    const ThumbsUpIcon = ({ className, ...props }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1-2-2h3" /></svg>);
-    const ThumbsDownIcon = ({ className, ...props }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm12-3h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3" /></svg>);
-    const InfoIcon = ({ className, ...props }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>);
+    // Application state variables
+    let conversationHistory = [];
+    let isRequestActive = false;
 
-    const WORKER_URL = 'https://wricore.james75x2.workers.dev/';
+    // DOM References
+    const chatInput = document.getElementById('chat-input');
+    const sendBtn = document.getElementById('send-btn');
+    const charCounter = document.getElementById('char-counter');
+    const messagesTarget = document.getElementById('messages-target');
+    const emptyStateContainer = document.getElementById('empty-state-container');
+    const chatScroller = document.getElementById('chat-scroller');
+    const errorBanner = document.getElementById('error-banner');
+    const errorText = document.getElementById('error-text');
+    const newTripBtn = document.getElementById('new-trip-btn');
+    const welcomeHeading = document.getElementById('welcome-heading');
+    const welcomeSubheading = document.getElementById('welcome-subheading');
+    const suggestionsGridTarget = document.getElementById('suggestions-grid-target');
+    
+    // Dialog overlays
+    const customDialogOverlay = document.getElementById('custom-dialog-overlay');
+    const dialogCancelBtn = document.getElementById('dialog-cancel-btn');
+    const dialogConfirmBtn = document.getElementById('dialog-confirm-btn');
 
-    const AGENT_CONFIGS = {
-      write: {
-        id: 'write',
-        name: 'Writing Agent',
-        badge: 'WRITE-BOT v2.6',
-        tagline: 'Professional Writing & Editorial Assistant',
-        description: 'Your premium writing partner for essays, blogs, emails, summaries, and complex copy edits.',
-        systemInstruction: `You are the WriCoRe Writing Agent, a master copywriter and editorial expert. 
-Your goal is to draft copy with immaculate structure, elegance, and tone alignment. 
-- Use formatting (bolding, clean lists, headers) to make writing highly legible.
-- Keep responses tailored to the desired formatting (emails, essays, reports, blog posts).
-- Maintain an inspiring, constructive, and articulate voice.`,
-        color: '#00d4ff',
-        glowColor: 'rgba(0, 212, 255, 0.08)',
-        emptyStateIcon: <PenToolIcon className="w-8 h-8 text-[#00d4ff]" />,
-        suggestions: [
-          "Draft a professional email asking for project delays approval",
-          "Write a short, engaging blog post about the future of remote workspaces",
-          "Polish and rewrite a rough paragraph into a compelling pitch"
-        ]
-      },
-      code: {
-        id: 'code',
-        name: 'Coding Agent',
-        badge: 'DEV-BOT v2.6',
-        tagline: 'Full-Stack Engineering & Debugging Assistant',
-        description: 'Your interactive code companion. Writes clean code, explains algorithms, and refactors bugs.',
-        systemInstruction: `You are the WriCoRe Coding Agent, a world-class senior software engineer.
-- Provide clean, production-ready, modular, and extremely well-commented code.
-- Always specify the language used in markdown code blocks.
-- Outline logical bugs clearly, suggest corrective edits, and explain *why* the bug occurred.
-- Be concise, direct, and technically accurate.`,
-        color: '#a78bfa',
-        glowColor: 'rgba(167, 139, 250, 0.08)',
-        emptyStateIcon: <Code2Icon className="w-8 h-8 text-[#a78bfa]" />,
-        suggestions: [
-          "Write a responsive CSS flexbox layout example with modern styling",
-          "Create a JavaScript function with exponential backoff for fetching APIs",
-          "Explain the Big O complexity of quicksort vs mergesort with code snippets"
-        ]
-      },
-      research: {
-        id: 'research',
-        name: 'Research Agent',
-        badge: 'ANALYST-BOT v2.6',
-        tagline: 'Deep Analysis & Grounded Researcher',
-        description: 'Empowered with factual grounding to synthesize deep, logical reports.',
-        systemInstruction: `You are the WriCoRe Research Agent, a meticulous and objective senior research analyst.
-- Use facts and logical synthesis to formulate thorough, deeply structured reports.
-- Use Markdown headers, tables, bulleted lists, and blockquotes for scientific presentation.
-- Focus on logical, structural, and factual depth. Organize complex theories systematically.`,
-        color: '#34d399',
-        glowColor: 'rgba(52, 211, 153, 0.08)',
-        emptyStateIcon: <SearchIcon className="w-8 h-8 text-[#34d399]" />,
-        suggestions: [
-          "Compare the architectural trade-offs of Monoliths vs Microservices",
-          "Explain quantum computing principles for a non-technical audience",
-          "Create a structured research outline on renewable energy progress"
-        ]
-      }
-    };
+    // Cookie Utilities
+    function setCookie(name, value, days = 30) {
+      const expires = new Date();
+      expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+      document.cookie = `${name}=${encodeURIComponent(value)};expires=${expires.toUTCString()};path=/;SameSite=Lax`;
+    }
 
-    function App() {
-      const [activeAgent, setActiveAgent] = useState('write');
-      const [messages, setMessages] = useState({ write: [], code: [], research: [] });
-      const [userInput, setUserInput] = useState('');
-      const [isLoading, setIsLoading] = useState(false);
-      const [errorMsg, setErrorMsg] = useState(null);
-      const [activeEngine, setActiveEngine] = useState('WAITING FOR PROMPT');
+    function getCookie(name) {
+      const keyValue = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
+      return keyValue ? decodeURIComponent(keyValue[2]) : null;
+    }
+
+    // Helper to calculate the next valid future date range for suggested prompts
+    function calculateNextOccurrence(month, day, durationDays) {
+      const now = new Date();
+      let year = now.getFullYear();
+      let checkin = new Date(year, month - 1, day);
       
-      const [isSpeaking, setIsSpeaking] = useState(null);
-      const [feedbacks, setFeedbacks] = useState({});
-      const [copiedIndex, setCopiedIndex] = useState(null);
-      const [isDemoMode, setIsDemoMode] = useState(false);
-
-      const chatEndRef = useRef(null);
-      const textareaRef = useRef(null);
-
-      useEffect(() => {
-        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, [messages, isLoading, activeAgent]);
-
-      useEffect(() => {
-        if (textareaRef.current) {
-          textareaRef.current.style.height = 'auto';
-          textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 180)}px`;
-        }
-      }, [userInput]);
-
-      useEffect(() => {
-        if ('speechSynthesis' in window) {
-          window.speechSynthesis.cancel();
-        }
-        setIsSpeaking(null);
-      }, [activeAgent]);
-
-      const handleSpeak = (text, idx) => {
-        if ('speechSynthesis' in window) {
-          if (isSpeaking === idx) {
-            window.speechSynthesis.cancel();
-            setIsSpeaking(null);
-          } else {
-            window.speechSynthesis.cancel();
-            const cleanText = text.replace(/```[\s\S]*?```/g, '[Code block content omitted from speech]').replace(/[*#`>]/g, '');
-            const utterance = new SpeechSynthesisUtterance(cleanText);
-            utterance.onend = () => setIsSpeaking(null);
-            utterance.onerror = () => setIsSpeaking(null);
-            window.speechSynthesis.speak(utterance);
-            setIsSpeaking(idx);
-          }
-        } else {
-          setErrorMsg("Audio Speak synthesis is not supported on your current browser framework.");
-        }
+      // If the date has already passed this year, roll it forward to next year
+      if (checkin < now) {
+        year += 1;
+        checkin = new Date(year, month - 1, day);
+      }
+      
+      const checkout = new Date(checkin);
+      checkout.setDate(checkout.getDate() + durationDays);
+      
+      const format = (d) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const r = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${r}`;
       };
-
-      const handleExportDocs = (text, idx) => {
-        try {
-          const blob = new Blob([text], { type: "text/markdown;charset=utf-8;" });
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement("a");
-          link.href = url;
-          link.setAttribute("download", `wricore_agent_response_${idx}.md`);
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-        } catch (err) {
-          setErrorMsg("Export Docs failed to download: " + err.message);
-        }
-      };
-
-      const handleDraftGmail = (text) => {
-        const textSnippet = text.length > 2500 ? text.substring(0, 2500) + "\n\n... [Truncated for link limitations]" : text;
-        const mailto = `https://mail.google.com/mail/?view=cm&fs=1&body=${encodeURIComponent(textSnippet)}`;
-        window.open(mailto, '_blank');
-      };
-
-      const handleBranchChat = (idx) => {
-        setMessages(prev => {
-          const branchedHistory = prev[activeAgent].slice(0, idx + 1);
-          return { ...prev, [activeAgent]: branchedHistory };
-        });
-      };
-
-      const handleToggleFeedback = (idx, type) => {
-        setFeedbacks(prev => {
-          const key = `${activeAgent}_${idx}`;
-          const current = prev[key];
-          return { ...prev, [key]: current === type ? null : type };
-        });
-      };
-
-      const agent = AGENT_CONFIGS[activeAgent];
-
-      const renderMessageContent = (text) => {
-        if (!text) return null;
-        const parts = text.split(/(```[\s\S]*?```)/g);
+      
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const checkinStr = `${monthNames[checkin.getMonth()]} ${checkin.getDate()}`;
+      const checkoutStr = checkin.getMonth() === checkout.getMonth() 
+        ? `${checkout.getDate()}` 
+        : `${monthNames[checkout.getMonth()]} ${checkout.getDate()}`;
         
-        return parts.map((part, index) => {
-          if (part.startsWith('```') && part.endsWith('```')) {
-            const match = part.match(/```(\w*)\n([\s\S]*?)```/);
-            const language = match ? match[1] : 'code';
-            const codeText = match ? match[2].trim() : part.slice(3, -3).trim();
-            
-            return (
-              <div key={index} className="my-3 border border-gray-800 rounded-lg overflow-hidden bg-[#0d1520] font-mono text-xs sm:text-sm">
-                <div className="flex items-center justify-between px-4 py-1.5 bg-[#162030] border-b border-gray-800 text-[#8b9ab5]">
-                  <span className="uppercase text-[10px] tracking-wider font-semibold font-sans text-[#00d4ff]">{language || 'code'}</span>
-                  <button type="button" onClick={() => handleCopyText(codeText, index)} className="flex items-center gap-1.5 py-0.5 px-2 rounded hover:bg-gray-700 transition-colors text-xs">
-                    {copiedIndex === index ? (
-                      <Fragment><CheckIcon className="w-3.5 h-3.5 text-[#34d399]" /><span className="text-[#34d399]">Copied</span></Fragment>
-                    ) : (
-                      <Fragment><CopyIcon className="w-3.5 h-3.5" /><span>Copy</span></Fragment>
-                    )}
-                  </button>
-                </div>
-                <pre className="p-4 overflow-x-auto text-gray-200 whitespace-pre-wrap break-all leading-relaxed"><code>{codeText}</code></pre>
-              </div>
-            );
-          } else {
-            const lines = part.split('\n');
-            return (
-              <div key={index} className="space-y-2 leading-relaxed text-gray-200">
-                {lines.map((line, lineIdx) => {
-                  if (line.startsWith('### ')) return <h3 key={lineIdx} className="text-base font-bold mt-4 mb-2 text-white flex items-center gap-2"><SparklesIcon className="w-3.5 h-3.5 text-[#00d4ff]" />{line.substring(4)}</h3>;
-                  if (line.startsWith('## ')) return <h2 key={lineIdx} className="text-lg font-bold mt-4 mb-2 text-white border-b border-gray-800 pb-1">{line.substring(3)}</h2>;
-                  if (line.startsWith('# ')) return <h1 key={lineIdx} className="text-xl font-extrabold mt-5 mb-2 text-white">{line.substring(2)}</h1>;
-                  if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) return <ul key={lineIdx} className="list-disc pl-5 my-1 text-gray-300"><li>{parseInlineMarkdown(line.trim().substring(2))}</li></ul>;
-                  
-                  const numListMatch = line.trim().match(/^(\d+)\.\s(.*)/);
-                  if (numListMatch) return <ol key={lineIdx} className="list-decimal pl-5 my-1 text-gray-300"><li>{parseInlineMarkdown(numListMatch[2])}</li></ol>;
-                  
-                  if (line.trim().startsWith('> ')) return <blockquote key={lineIdx} className="border-l-3 border-[#00d4ff] pl-3 py-1 my-2 bg-gray-900/40 rounded-r text-[#8b9ab5] italic">{parseInlineMarkdown(line.trim().substring(2))}</blockquote>;
-                  
-                  return line.trim() ? <p key={lineIdx} className="my-1 text-[14.5px]">{parseInlineMarkdown(line)}</p> : <div key={lineIdx} className="h-2" />;
-                })}
-              </div>
-            );
-          }
-        });
+      return {
+        checkinFormatted: format(checkin),
+        checkoutFormatted: format(checkout),
+        readableRange: `${checkinStr} - ${checkoutStr}, ${year}`,
+        year: year
       };
+    }
 
-      const parseInlineMarkdown = (text) => {
-        const elements = [];
-        let key = 0;
-        const boldRegex = /\*\*([^*]+)\*\*/g;
-        const inlineCodeRegex = /`([^`]+)`/g;
+    // Dynamic, Future-Proof Travel Prompt Pool
+    function generateDynamicSuggestions() {
+      const tokyo = calculateNextOccurrence(4, 3, 7); // April 3, 7 days
+      const paris = calculateNextOccurrence(7, 12, 4); // July 12, 4 days
+      const nyc = calculateNextOccurrence(12, 20, 7); // Dec 20, 7 days
+      const london = calculateNextOccurrence(10, 15, 3); // Oct 15, 3 days
+      const bali = calculateNextOccurrence(12, 10, 10); // Dec 10, 10 days
+      const maldives = calculateNextOccurrence(9, 5, 7); // Sept 5, 7 days
+      const rome = calculateNextOccurrence(10, 14, 7); // Oct 14, 7 days
+      const sydney = calculateNextOccurrence(1, 8, 7); // Jan 8, 7 days
 
-        const allMatches = [
-          ...[...text.matchAll(boldRegex)].map(m => ({ type: 'bold', start: m.index, end: m.index + m[0].length, content: m[1] })),
-          ...[...text.matchAll(inlineCodeRegex)].map(m => ({ type: 'code', start: m.index, end: m.index + m[0].length, content: m[1] }))
-        ].sort((a, b) => a.start - b.start);
+      return [
+        { text: `Tokyo Spring · 2 Adults (${tokyo.readableRange}) 🌸`, prompt: `I'm planning a spring trip to Tokyo from ${tokyo.checkinFormatted} to ${tokyo.checkoutFormatted} for 2 adults.` },
+        { text: `Paris Summer · 2 Guests (${paris.readableRange}) 🗼`, prompt: `Looking for a luxury hotel in Paris near the Louvre from ${paris.checkinFormatted} to ${paris.checkoutFormatted} for 2 guests.` },
+        { text: `New York Winter · 2 Adults, 2 Kids (${nyc.readableRange}) 🗽`, prompt: `I need to book lodging in New York City from ${nyc.checkinFormatted} to ${nyc.checkoutFormatted} for 2 adults and 2 kids (ages 6 and 11).` },
+        { text: `London Solo · 1 Adult (${london.readableRange}) 🇬🇧`, prompt: `Planning a quick solo holiday in central London from ${london.checkinFormatted} to ${london.checkoutFormatted}.` },
+        { text: `Bali escape · 4 Adults, 2 Rooms (${bali.readableRange}) 🌺`, prompt: `I need to book a stay in Bali from ${bali.checkinFormatted} to ${bali.checkoutFormatted} for 4 adults in 2 rooms.` },
+        { text: `Maldives honeymoon · 2 Adults (${maldives.readableRange}) 🏝️`, prompt: `Looking for an overwater suite in the Maldives from ${maldives.checkinFormatted} to ${maldives.checkoutFormatted} for 2 adults.` },
+        { text: `Rome Historical · 2 Adults (${rome.readableRange}) 🏛️`, prompt: `Plan a historic stay in Rome near the Colosseum from ${rome.checkinFormatted} to ${rome.checkoutFormatted} for 2 adults.` },
+        { text: `Sydney Coastal · 2 Adults (${sydney.readableRange}) 🦘`, prompt: `I am flying to Sydney and looking for a beachside room from ${sydney.checkinFormatted} to ${sydney.checkoutFormatted} for 2 adults.` }
+      ];
+    }
 
-        let currentIndex = 0;
-        allMatches.forEach((match) => {
-          if (match.start >= currentIndex) {
-            if (match.start > currentIndex) elements.push(<span key={key++}>{text.substring(currentIndex, match.start)}</span>);
-            if (match.type === 'bold') elements.push(<strong key={key++} className="font-semibold text-white">{match.content}</strong>);
-            else if (match.type === 'code') elements.push(<code key={key++} className="px-1.5 py-0.5 rounded bg-white/10 font-mono text-[12px] text-[#00d4ff]">{match.content}</code>);
-            currentIndex = match.end;
-          }
+    // Helper to shuffle array
+    function shuffleArray(array) {
+      const copy = [...array];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    function initializeSuggestions() {
+      const lastDestination = getCookie('voyageflow_last_destination');
+      const pool = generateDynamicSuggestions();
+      let chips = [];
+
+      if (lastDestination) {
+        welcomeHeading.textContent = `Heading back to ${lastDestination}?`;
+        welcomeSubheading.textContent = `Welcome back! Let's resume planning your journey to ${lastDestination}, or pick a new destination below to start fresh.`;
+        
+        // Ensure NYC testing child chip is easily accessible
+        const nycCard = pool.find(item => item.text.includes("New York"));
+        const otherPool = pool.filter(item => !item.text.includes("New York") && !item.text.includes(lastDestination));
+
+        chips = [
+          { text: `Plan a trip to ${lastDestination} 🗺️`, prompt: `Let's plan a journey to ${lastDestination}. I am looking to go with my partner for a week.` },
+          nycCard,
+          ...shuffleArray(otherPool).slice(0, 2)
+        ];
+      } else {
+        welcomeHeading.textContent = "Where to next?";
+        welcomeSubheading.textContent = "Your ultimate premium AI travel assistant. Tell me where you want to go, when you're traveling, and who is joining—I'll generate your customized day-by-day itineraries and direct booking suites instantly!";
+        
+        // Pin NYC test card to the first slot for quick child checks
+        const nycCard = pool.find(item => item.text.includes("New York"));
+        const remainingPool = pool.filter(item => !item.text.includes("New York"));
+        
+        chips = [
+          nycCard,
+          ...shuffleArray(remainingPool).slice(0, 3)
+        ];
+      }
+
+      suggestionsGridTarget.innerHTML = '';
+      chips.forEach(chip => {
+        const btn = document.createElement('button');
+        btn.className = 'suggestion-chip';
+        btn.setAttribute('data-prompt', chip.prompt);
+        btn.innerHTML = `
+          <span>${chip.text}</span>
+          <span>➔</span>
+        `;
+        
+        btn.addEventListener('click', () => {
+          chatInput.value = btn.getAttribute('data-prompt');
+          chatInput.dispatchEvent(new Event('input'));
+          handleFormSubmit();
         });
 
-        if (currentIndex < text.length) elements.push(<span key={key++}>{text.substring(currentIndex)}</span>);
-        return elements.length > 0 ? elements : text;
-      };
+        suggestionsGridTarget.appendChild(btn);
+      });
+    }
 
-      const handleCopyText = (text, index) => {
-        try {
-          const textArea = document.createElement("textarea");
-          textArea.value = text;
-          document.body.appendChild(textArea);
-          textArea.select();
-          document.execCommand('copy');
-          document.body.removeChild(textArea);
-          setCopiedIndex(index);
-          setTimeout(() => setCopiedIndex(null), 2000);
-        } catch (err) {
-          console.error("Copy failed: ", err);
+    // Fully structured parameters mapping for flights, hotels, experiences and insurance
+    function createBookingDemandCard(extractedPayload) {
+      const { checkin, checkout, guests, location_value, location_type } = extractedPayload;
+      
+      const destEncoded = encodeURIComponent(location_value || '');
+      const adultsCount = guests?.number_of_adults || 1;
+      const roomsCount = guests?.number_of_rooms || 1;
+      const children = guests?.children || [];
+      const childrenCount = children.length;
+
+      // Save the last destination to cookie memory
+      if (location_value && location_value.toLowerCase() !== 'everywhere') {
+        setCookie('voyageflow_last_destination', location_value);
+      }
+
+      // 1. HOTEL LINK: Booking.com
+      const BOOKING_AID = '800000'; 
+      let hotelUrl = `https://www.booking.com/searchresults.html?ss=${destEncoded}&aid=${BOOKING_AID}&checkin=${checkin}&checkout=${checkout}&group_adults=${adultsCount}&no_rooms=${roomsCount}`;
+      if (childrenCount > 0) {
+        hotelUrl += `&group_children=${childrenCount}`;
+        const ageParams = children.map(age => `&age=${age}`).join('');
+        hotelUrl += ageParams;
+      }
+      hotelUrl += `&utm_source=voyageflow&utm_medium=chat`;
+
+      // 2. FLIGHTS LINK: Google Flights
+      let flightQueryDest = destEncoded;
+      
+      // Force Google Flights to pick a specific airport instead of defaulting to country map-view.
+      const broadRegions = ['maldives', 'bali', 'hawaii', 'boracay', 'phuket', 'fiji'];
+      if (broadRegions.some(region => (location_value || '').toLowerCase().includes(region))) {
+         flightQueryDest += '%20Airport'; 
+      }
+
+      let flightQuery = `Flights to ${flightQueryDest} on ${checkin} through ${checkout} with ${adultsCount} adults`;
+      if (childrenCount > 0) {
+        flightQuery += ` and ${childrenCount} children`;
+      }
+      const flightUrl = `https://www.google.com/travel/flights?q=${encodeURIComponent(flightQuery)}`;
+
+     // =========================================================================
+      // 3. EXPERIENCES LINK: Viator (Dynamic Global Deep-Link Entrypoint Fix)
+      // =========================================================================
+      const VIATOR_PID = 'P00069951'; // Your tracking affiliate ID 
+      
+      // Calculate aggregate traveler volume for Viator's core counter 
+      const totalTravelers = adultsCount + childrenCount;
+
+      // Point directly to Viator's global search results entry point
+      // This forces their application to process structural variables instead of text
+      let experiencesUrl = `https://www.viator.com/searchResults/all?text=${destEncoded}&pid=${VIATOR_PID}&medium=link&campaign=voyageflow_chat`;
+      
+      // Inject dates cleanly into the calendar components 
+      if (checkin && checkout) {
+        experiencesUrl += `&startDate=${checkin}&endDate=${checkout}`;
+      }
+      
+      // Push traveler totals directly to the passenger picker widget 
+      if (totalTravelers > 1) {
+        experiencesUrl += `&numTravelers=${totalTravelers}`;
+      }
+
+      // 4. INSURANCE LINK: VisitorsCoverage
+      const VISITORS_COVERAGE_ID = 'voyageflow'; 
+      const insuranceUrl = `https://www.visitorscoverage.com/?affiliate=${VISITORS_COVERAGE_ID}&utm_source=voyageflow&utm_medium=chat`;
+
+      // Build readable guests summary
+      let guestsString = `${adultsCount} Adult${adultsCount > 1 ? 's' : ''}`;
+      if (childrenCount > 0) {
+        guestsString += `, ${childrenCount} Child${childrenCount > 1 ? 'ren' : ''} (${children.join(', ')} yrs old)`;
+      }
+      guestsString += ` · ${roomsCount} Room${roomsCount > 1 ? 's' : ''}`;
+
+      return `
+        <div class="booking-summary-card">
+          <div class="booking-card-header">
+            <svg style="width:20px;height:20px;stroke:var(--primary-accent);stroke-width:2;fill:none;" viewBox="0 0 24 24">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+            </svg>
+            <span>💼 Premium Travel Booking Desk</span>
+          </div>
+          
+          <div class="booking-details-grid">
+            <div class="detail-item">
+              <div class="detail-label">📍 Destination (${location_type})</div>
+              <div class="detail-value">${location_value}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">👥 Travelers & Rooms</div>
+              <div class="detail-value">${guestsString}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">📅 Check-In Date</div>
+              <div class="detail-value">${checkin}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">📅 Check-Out Date</div>
+              <div class="detail-value">${checkout}</div>
+            </div>
+          </div>
+
+          <div class="booking-action-grid">
+            <a href="${hotelUrl}" target="_blank" rel="noopener noreferrer" class="booking-action-btn hotels">
+              🏨 Book Hotels →
+            </a>
+            <a href="${flightUrl}" target="_blank" rel="noopener noreferrer" class="booking-action-btn flights">
+              ✈️ Compare Flights →
+            </a>
+            <a href="${experiencesUrl}" target="_blank" rel="noopener noreferrer" class="booking-action-btn experiences">
+              🎟️ Book Experiences →
+            </a>
+            <a href="${insuranceUrl}" target="_blank" rel="noopener noreferrer" class="booking-action-btn insurance">
+              🛡️ Protect Trip →
+            </a>
+          </div>
+          <div class="booking-disclaimer">All booking engines initialized with secure monetization tracking.</div>
+        </div>
+      `;
+    }
+
+    chatInput.addEventListener('input', () => {
+      const len = chatInput.value.length;
+      charCounter.textContent = `${len}/4000`;
+      sendBtn.disabled = len === 0 || isRequestActive;
+
+      chatInput.style.height = '24px';
+      const scrollHeight = chatInput.scrollHeight;
+      chatInput.style.height = `${Math.min(scrollHeight - 4, 120)}px`;
+    });
+
+    chatInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        if (chatInput.value.trim().length > 0 && !isRequestActive) {
+          handleFormSubmit();
         }
-      };
+      }
+    });
 
-      const handleSendMessage = async (e, suggestedPrompt = null) => {
-        if (e) e.preventDefault();
-        const promptToSend = suggestedPrompt || userInput;
-        if (!promptToSend.trim() || isLoading) return;
+    newTripBtn.addEventListener('click', () => {
+      if (conversationHistory.length === 0) return; 
+      customDialogOverlay.style.display = 'flex';
+    });
 
-        const userMessage = { role: 'user', content: promptToSend, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
-        setMessages(prev => ({ ...prev, [activeAgent]: [...prev[activeAgent], userMessage] }));
+    dialogCancelBtn.addEventListener('click', () => {
+      customDialogOverlay.style.display = 'none';
+    });
 
-        if (!suggestedPrompt) setUserInput('');
-        setIsLoading(true);
-        setErrorMsg(null);
+    dialogConfirmBtn.addEventListener('click', () => {
+      resetApplicationState();
+      customDialogOverlay.style.display = 'none';
+    });
 
-        const currentLiveDate = new Date().toDateString();
-        const anchoredSystemInstruction = `${agent.systemInstruction}\n\n[CRITICAL TEMPORAL ANCHOR: The actual current calendar date is ${currentLiveDate}. You must strictly use this current date for any dates, reports, analyses, metadata generation, or timelines. Do not assume or hallucinate previous years.]`;
+    document.getElementById('error-close-btn').addEventListener('click', () => {
+      errorBanner.style.display = 'none';
+    });
 
-        if (isDemoMode) {
-          setTimeout(() => {
-            let responseBody = "";
-            if (activeAgent === 'write') responseBody = `### Content Generation Complete\n*Prepared by WriCoRe Writing Agent (${new Date().toLocaleDateString(undefined, { month: 'long', year: 'numeric' })})*\n\nHere is your requested professional draft:\n\n> **Subject:** Response regarding "${promptToSend.substring(0, 45)}..."\n>\n> Dear Team,\n>\n> I am writing to provide an immediate update regarding our timeline adjustments. Following our recent review, we are formalizing the structure to optimize our next delivery sprint.\n>\n> Please let me know your thoughts so we can coordinate accordingly.\n\nBest regards,\n**WriCoRe Copywriter**`;
-            else if (activeAgent === 'code') responseBody = `### Development Solution\n*Generated by WriCoRe Developer Portal (${new Date().toLocaleDateString(undefined, { month: 'long', year: 'numeric' })})*\n\nHere is a clean implementation of the requested script:\n\n\`\`\`javascript\n// Optimized function designed for ${promptToSend.replace(/`/g, '')}\nfunction handleWorkspaceExecution() {\n  const startTime = Date.now();\n  console.log("Initializing agent thread sequence...");\n  \n  return {\n    success: true,\n    timestamp: new Date().toISOString(),\n    executionTime: Date.now() - startTime\n  };\n}\n\`\`\``;
-            else responseBody = `### Fact-Check & Research Analysis\n*Prepared by WriCoRe Research Agent (${new Date().toLocaleDateString(undefined, { month: 'long', year: 'numeric' })})*\n\nBased on synthesized logic, here is the structural breakdown of your query:\n\n1. **Core Concept Synthesis:** Your prompt focuses on deeply integrated analytical systems.\n2. **Strategic Insights:** Developing a modular framework is critical to preventing single points of failure.\n3. **Practical Timeline:** Initiating development cycles based on the real-world schedule (${currentLiveDate}) guarantees alignment with standard system delivery parameters.`;
+    function resetApplicationState() {
+      conversationHistory = [];
+      messagesTarget.innerHTML = '';
+      emptyStateContainer.style.display = 'flex';
+      chatInput.value = '';
+      chatInput.dispatchEvent(new Event('input'));
+      errorBanner.style.display = 'none';
+      initializeSuggestions();
+    }
 
-            setMessages(prev => ({ ...prev, [activeAgent]: [...prev[activeAgent], { role: 'model', content: responseBody, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }] }));
-            setIsLoading(false);
-          }, 1100);
+    function scrollToBottom() {
+      chatScroller.scrollTop = chatScroller.scrollHeight;
+    }
+
+    function showError(message) {
+      errorText.textContent = message;
+      errorBanner.style.display = 'flex';
+      scrollToBottom();
+    }
+
+    async function handleFormSubmit() {
+      const userText = chatInput.value.trim();
+      if (!userText || isRequestActive) return;
+
+      if (WORKER_URL === 'YOUR_CLOUDFLARE_WORKER_URL_HERE' || !WORKER_URL) {
+        showError("Please configure your Cloudflare Worker URL in the source code of index.html");
+        return;
+      }
+
+      if (conversationHistory.length === 0) {
+        emptyStateContainer.style.display = 'none';
+      }
+
+      appendMessageBubble('user', userText);
+      conversationHistory.push({
+        role: 'user',
+        parts: [{ text: userText }]
+      });
+
+      chatInput.value = '';
+      chatInput.style.height = '24px';
+      chatInput.dispatchEvent(new Event('input'));
+
+      const loaderId = appendTypingIndicator();
+      scrollToBottom();
+
+      isRequestActive = true;
+      sendBtn.disabled = true;
+
+      try {
+        const response = await fetch(WORKER_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            messages: conversationHistory
+          })
+        });
+
+        removeTypingIndicator(loaderId);
+
+        if (!response.ok) {
+          let errorMessage = "Something went wrong — please try again";
+          try {
+            const errData = await response.json();
+            if (errData && errData.error) {
+              errorMessage = errData.error;
+            }
+          } catch (e) {}
+
+          if (response.status === 429) {
+            showError("VoyageFlow is busy — please wait a moment and try again");
+          } else if (response.status === 401) {
+            showError("Backend Authorization error or invalid API credentials (401)");
+          } else {
+            showError(errorMessage);
+          }
           return;
         }
 
-        const historyPayload = messages[activeAgent].map(msg => ({
-          role: msg.role === 'user' ? 'user' : 'assistant',
-          content: msg.content
-        }));
-        
-        const payloadMessages = [
-          { role: 'system', content: anchoredSystemInstruction },
-          ...historyPayload,
-          { role: 'user', content: promptToSend }
-        ];
+        const data = await response.json();
+        const rawModelReply = data.reply;
 
-        try {
-          const response = await fetch(WORKER_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ messages: payloadMessages })
-          });
-
-          if (!response.ok) {
-            const errDetails = await response.json().catch(() => ({ error: `HTTP Code ${response.status}` }));
-            throw new Error(errDetails.error || `HTTP Code ${response.status}`);
-          }
-
-          const responseData = await response.json();
-          const assistantText = responseData?.choices?.[0]?.message?.content;
-          
-          if (responseData.model) {
-            setActiveEngine(responseData.model.toUpperCase());
-          }
-
-          if (assistantText) {
-            setMessages(prev => ({ ...prev, [activeAgent]: [...prev[activeAgent], { role: 'model', content: assistantText, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }] }));
-          } else {
-            throw new Error("Parsed empty token array from the proxy.");
-          }
-        } catch (err) {
-          console.error(`[WriCoRe] Connection issue: ${err.message}`);
-          if (err.message === "Failed to fetch") {
-            setErrorMsg(
-              <Fragment>
-                Network Error (Failed to fetch). This usually means your Cloudflare Worker is either not deployed yet, or the browser is blocking it due to a CORS mismatch in the preview environment. Verify your worker.js deployment and domain settings.
-                <button type="button" onClick={() => { setIsDemoMode(true); setErrorMsg(null); setActiveEngine("OFFLINE SIMULATION"); }} className="ml-2 underline font-bold text-[#00d4ff] hover:text-[#33ddff]">Enable Offline Demo Mode</button> to test the workspace interface right now.
-              </Fragment>
-            );
-          } else {
-            setErrorMsg(err.message);
-          }
-        } finally {
-          setIsLoading(false);
-        }
-      };
-
-      const handleClearChat = () => {
-        setMessages(prev => ({ ...prev, [activeAgent]: [] }));
-        setErrorMsg(null);
-      };
-
-      return (
-        <div className="relative flex flex-col flex-1 h-screen max-h-screen">
-          <header className="flex items-center justify-between py-4 border-b border-white/5 flex-shrink-0 relative z-10">
-            <div>
-              <div className="font-mono text-2xl font-bold tracking-tight flex items-center gap-1">
-                <span className="text-[#00d4ff]">W</span><span className="text-gray-200">ri</span><span className="text-[#a78bfa]">C</span><span className="text-gray-200">o</span><span className="text-[#34d399]">R</span><span className="text-gray-200">e</span>
-                <span className="ml-2 text-xs py-0.5 px-2 bg-[#1a2235] text-[#8b9ab5] border border-white/10 rounded-full font-sans font-medium tracking-normal">Dual-Engine Base</span>
-              </div>
-              <div className="font-mono text-[10px] uppercase text-[#4a5568] tracking-widest mt-0.5">
-                Active Engine: <span className="text-white font-bold">{isDemoMode ? 'OFFLINE SIMULATION' : activeEngine}</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 sm:gap-3">
-              {isDemoMode && (
-                <button type="button" onClick={() => { setIsDemoMode(false); setMessages(prev => ({ write: [], code: [], research: [] })); setActiveEngine('WAITING FOR PROMPT'); }} className="px-2.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg text-xs font-semibold font-mono" title="Click to reconnect to the live Worker proxy endpoint">DEMO ACTIVE (CLICK TO RETRY LIVE)</button>
-              )}
-              <button type="button" onClick={handleClearChat} className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-red-500/10 hover:text-red-400 border border-white/5 hover:border-red-500/20 rounded-lg text-xs font-medium text-[#8b9ab5] transition-all"><TrashIcon className="w-3.5 h-3.5" /><span className="hidden sm:inline">Clear Chat</span></button>
-            </div>
-          </header>
-
-          <nav className="grid grid-cols-3 gap-2 py-4 flex-shrink-0" role="tablist">
-            {Object.keys(AGENT_CONFIGS).map((key) => {
-              const cfg = AGENT_CONFIGS[key];
-              const isSelected = activeAgent === key;
-              return (
-                <button key={key} type="button" onClick={() => { setActiveAgent(key); setErrorMsg(null); }} className={`flex flex-col sm:flex-row items-center justify-center gap-2 p-3 sm:py-3.5 sm:px-4 rounded-xl border text-center transition-all ${isSelected ? 'text-white' : 'bg-[#111827]/40 border-white/5 text-[#8b9ab5] hover:border-white/10'}`} style={{ borderColor: isSelected ? cfg.color : '', backgroundColor: isSelected ? cfg.glowColor : '', boxShadow: isSelected ? `0 4px 20px -8px ${cfg.color}` : '' }}>
-                  {cfg.id === 'write' && <PenToolIcon className="w-5 h-5" style={{ color: isSelected ? cfg.color : '' }} />}
-                  {cfg.id === 'code' && <Code2Icon className="w-5 h-5" style={{ color: isSelected ? cfg.color : '' }} />}
-                  {cfg.id === 'research' && <SearchIcon className="w-5 h-5" style={{ color: isSelected ? cfg.color : '' }} />}
-                  <span className="text-xs sm:text-sm font-semibold tracking-wide">{cfg.name}</span>
-                </button>
-              );
-            })}
-          </nav>
-
-          <div className="flex items-center gap-3 p-3 bg-[#162030]/60 border border-white/5 rounded-xl text-xs sm:text-sm text-[#8b9ab5] flex-shrink-0">
-            <span className="font-mono font-bold tracking-wider px-2 py-0.5 rounded text-[10px]" style={{ backgroundColor: `${agent.color}15`, color: agent.color, border: `1px solid ${agent.color}30` }}>{agent.badge}</span>
-            <span className="truncate">{agent.description}</span>
-          </div>
-
-          {errorMsg && (
-            <div className="mt-3 flex items-start gap-2.5 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs sm:text-sm text-red-300 animate-fadeIn">
-              <AlertCircleIcon className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-              <div className="flex-1"><span className="font-bold">System Alert:</span> {errorMsg}</div>
-              <button type="button" onClick={() => setErrorMsg(null)} className="text-red-400 hover:text-white font-bold ml-1">×</button>
-            </div>
-          )}
-
-          <main className="flex-1 overflow-y-auto my-3 pr-1 space-y-4 min-h-0 flex flex-col relative z-10">
-            {messages[activeAgent].length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center py-8 text-center my-auto">
-                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 border transition-all" style={{ borderColor: `${agent.color}30`, backgroundColor: `${agent.color}10`, boxShadow: `0 8px 24px -10px ${agent.color}` }}>{agent.emptyStateIcon}</div>
-                <h2 className="text-xl font-bold text-white mb-1">{agent.name} Enabled</h2>
-                <p className="text-[#8b9ab5] text-sm max-w-sm mb-6 leading-relaxed">{agent.tagline}. Pick a prompt template below or start messaging.</p>
-                <div className="w-full max-w-lg grid grid-cols-1 gap-2.5">
-                  {agent.suggestions.map((suggestion, idx) => (
-                    <button key={idx} type="button" onClick={() => handleSendMessage(null, suggestion)} className="p-3 text-left bg-[#111827]/40 hover:bg-[#1a2235]/60 border border-white/5 hover:border-[#00d4ff]/20 rounded-xl text-xs sm:text-sm text-[#8b9ab5] hover:text-white transition-all flex items-center justify-between group">
-                      <span className="line-clamp-1 pr-4">{suggestion}</span><ArrowUpRightIcon className="w-4 h-4 text-gray-500 group-hover:text-[#00d4ff] flex-shrink-0" />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4 pb-2">
-                {messages[activeAgent].map((msg, idx) => {
-                  const feedbackKey = `${activeAgent}_${idx}`;
-                  const currentFeedback = feedbacks[feedbackKey];
-                  return (
-                    <div key={idx} className={`flex gap-3 max-w-[85%] ${msg.role === 'user' ? 'ml-auto flex-row-reverse' : 'mr-auto'}`}>
-                      <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center font-mono text-[11px] font-bold border ${msg.role === 'user' ? 'bg-[#1a2235] border-white/10 text-[#8b9ab5]' : 'bg-[#111827] border-white/5'}`} style={{ borderColor: msg.role === 'model' ? `${agent.color}25` : '', color: msg.role === 'model' ? agent.color : '' }}>{msg.role === 'user' ? 'ME' : 'AI'}</div>
-                      <div className="space-y-1">
-                        <div className={`p-4 rounded-2xl text-[14.5px] leading-relaxed border ${msg.role === 'user' ? 'bg-[#1a2235]/40 border-white/5 text-gray-100 rounded-tr-sm' : 'bg-[#111827]/80 border-white/5 text-gray-200 rounded-tl-sm'}`}>{msg.role === 'user' ? (<p className="whitespace-pre-wrap">{msg.content}</p>) : (renderMessageContent(msg.content))}</div>
-                        {msg.role === 'model' && (
-                          <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px] text-[#8b9ab5] animate-fadeIn">
-                            <button type="button" onClick={() => handleToggleFeedback(idx, 'like')} className={`flex items-center justify-center p-1.5 rounded transition-all ${currentFeedback === 'like' ? 'bg-[#34d399]/20 text-[#34d399]' : 'bg-white/5 hover:bg-white/10 hover:text-white'}`} title="Like response"><ThumbsUpIcon className="w-3.5 h-3.5" /></button>
-                            <button type="button" onClick={() => handleToggleFeedback(idx, 'dislike')} className={`flex items-center justify-center p-1.5 rounded transition-all ${currentFeedback === 'dislike' ? 'bg-red-500/20 text-red-400' : 'bg-white/5 hover:bg-white/10 hover:text-white'}`} title="Dislike response"><ThumbsDownIcon className="w-3.5 h-3.5" /></button>
-                            <button type="button" onClick={() => handleCopyText(msg.content, idx)} className="flex items-center gap-1 px-2 py-1 rounded bg-white/5 hover:bg-white/10 hover:text-white transition-all text-[11px]" title="Copy response body">{copiedIndex === idx ? (<Fragment><CheckIcon className="w-3 h-3 text-[#34d399]" /><span className="text-[#34d399]">Copied</span></Fragment>) : (<Fragment><CopyIcon className="w-3 h-3" /><span>Copy</span></Fragment>)}</button>
-                            <button type="button" onClick={() => handleSpeak(msg.content, idx)} className="flex items-center gap-1 px-2 py-1 rounded bg-white/5 hover:bg-white/10 hover:text-white transition-all text-[11px]" title="Listen (Read Aloud)"><Volume2Icon className={`w-3.5 h-3.5 ${isSpeaking === idx ? 'text-[#00d4ff] animate-pulse' : ''}`} /><span className={isSpeaking === idx ? 'text-[#00d4ff] font-medium' : ''}>{isSpeaking === idx ? 'Stop Speech' : 'Listen'}</span></button>
-                            <button type="button" onClick={() => handleExportDocs(msg.content, idx)} className="flex items-center gap-1 px-2 py-1 rounded bg-white/5 hover:bg-white/10 hover:text-white transition-all text-[11px]" title="Export to Markdown Docs File"><FileTextIcon className="w-3.5 h-3.5" /><span>Export Docs</span></button>
-                            <button type="button" onClick={() => handleDraftGmail(msg.content)} className="flex items-center gap-1 px-2 py-1 rounded bg-white/5 hover:bg-white/10 hover:text-white transition-all text-[11px]" title="Draft inside Gmail Compose"><MailIcon className="w-3.5 h-3.5" /><span>Gmail</span></button>
-                            <button type="button" onClick={() => handleBranchChat(idx)} className="flex items-center gap-1 px-2 py-1 rounded bg-white/5 hover:bg-white/10 hover:text-white transition-all text-[11px]" title="Branch/Fork chat timeline from this point"><GitBranchIcon className="w-3.5 h-3.5" /><span>Branch Here</span></button>
-                          </div>
-                        )}
-                        <div className={`text-[10px] text-[#4a5568] ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>{msg.timestamp}</div>
-                      </div>
-                    </div>
-                  );
-                })}
-                {isLoading && (
-                  <div className="flex gap-3 max-w-[80%] mr-auto animate-pulse">
-                    <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center font-mono text-[11px] font-bold border bg-[#111827]" style={{ borderColor: `${agent.color}25`, color: agent.color }}>AI</div>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1 px-4 py-3 rounded-2xl bg-[#111827]/80 border border-white/5 rounded-tl-sm"><span className="w-1.5 h-1.5 rounded-full bg-gray-500 animate-bounce" style={{ animationDelay: '0ms' }} /><span className="w-1.5 h-1.5 rounded-full bg-gray-500 animate-bounce" style={{ animationDelay: '150ms' }} /><span className="w-1.5 h-1.5 rounded-full bg-gray-500 animate-bounce" style={{ animationDelay: '300ms' }} /></div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-            <div ref={chatEndRef} />
-          </main>
-
-          <div className="py-4 border-t border-white/5 flex-shrink-0 relative z-10">
-            <form onSubmit={handleSendMessage} className="relative bg-[#0d1520] border border-white/10 focus-within:border-[#00d4ff]/50 rounded-2xl p-2 transition-all">
-              <textarea ref={textareaRef} rows="1" value={userInput} onChange={(e) => setUserInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(e); } }} placeholder={`Send your query to ${agent.name}...`} className="w-full bg-transparent border-none outline-none resize-none text-[14.5px] text-[#f0f4f8] placeholder-gray-500 max-h-[180px] py-2 px-3 focus:ring-0 leading-relaxed font-sans" maxLength={8000} />
-              <div className="flex items-center justify-between pt-1 border-t border-white/5 px-2 mt-1 text-[11px] text-[#4a5568]">
-                <span className="font-medium font-mono text-[#8b9ab5]">Active: <span style={{ color: agent.color }} className="font-bold">{agent.name}</span></span>
-                <div className="flex items-center gap-3">
-                  <span className="font-mono">{userInput.length} / 8000</span>
-                  <button type="submit" disabled={!userInput.trim() || isLoading} className="flex items-center justify-center w-8 h-8 rounded-xl bg-[#00d4ff] text-[#0b0f19] hover:bg-[#33ddff] disabled:opacity-20 disabled:cursor-not-allowed transition-all" style={{ backgroundColor: userInput.trim() ? agent.color : '', color: '#0b0f19' }}><SendIcon className="w-4 h-4" /></button>
-                </div>
-              </div>
-            </form>
-            <div className="flex items-center gap-1.5 mt-2.5 px-1 justify-center"><InfoIcon className="w-3.5 h-3.5 text-gray-600" /><span className="text-[10px] text-gray-500 text-center font-mono uppercase tracking-wider">Direct client-side interface powered by Dual-Engine Worker. Fully configured and operational on load.</span></div>
-            <footer className="mt-3 pt-2.5 border-t border-white/5 text-center"><p className="text-[11px] text-gray-500 hover:text-gray-400 transition-colors font-sans tracking-wide">© 2026 James Earl C. Felipe. Built with Claude and Gemini.</p></footer>
-          </div>
-        </div>
-      );
-    }
-  </script>
-
-  <!-- 
-    MANUAL COMPILATION SCRIPT
-    This securely extracts your React code above, compiles it, and attaches it to the DOM.
-    It guarantees the website's previewer cannot intercept it and inject crashing 'import' bugs.
-  -->
-  <script>
-    document.addEventListener("DOMContentLoaded", function() {
-      try {
-        // Pre-flight check: confirm the CDN scripts (React, ReactDOM, Babel) actually
-        // loaded before trying to use them. If a CDN is blocked (ad-blocker, corporate
-        // firewall, sandboxed preview tool), this gives a clear actionable message
-        // instead of a generic "X is not defined" error.
-        const missingDeps = [];
-        if (typeof React === 'undefined') missingDeps.push('React (cdn.jsdelivr.net/npm/react)');
-        if (typeof ReactDOM === 'undefined') missingDeps.push('ReactDOM (cdn.jsdelivr.net/npm/react-dom)');
-        if (typeof Babel === 'undefined') missingDeps.push('Babel (cdn.jsdelivr.net/npm/@babel/standalone)');
-        if (missingDeps.length > 0) {
-          throw new Error(
-            'The following CDN script(s) failed to load: ' + missingDeps.join(', ') +
-            '. This usually means an ad-blocker, corporate firewall, or sandboxed preview tool is blocking the CDN. Try opening this page directly in a normal browser tab, disabling ad-blockers for this site, or checking your network settings.'
-          );
+        if (!rawModelReply) {
+          showError("No response received — please try again");
+          return;
         }
 
-        const sourceCode = document.getElementById('wricore-app').textContent;
-        // Compile the source using the loaded Babel standalone script
-        // NOTE: must force the "classic" JSX runtime. Babel's default "automatic"
-        // runtime injects `import { jsx as _jsx } from "react/jsx-runtime"` into the
-        // output, which is invalid inside a plain (non-module) <script> tag and
-        // silently fails to execute in the browser — this was the root cause of the
-        // page hanging forever on "Compiling WriCoRe Dual-Engine Interface...".
-        const compiledCode = Babel.transform(sourceCode, { presets: [['react', { runtime: 'classic' }]] }).code;
-        
-        // Execute the compiled React script
-        const scriptElement = document.createElement('script');
-        scriptElement.type = 'text/javascript';
-        scriptElement.innerHTML = compiledCode + '\n\nconst container = document.getElementById("root");\nconst root = ReactDOM.createRoot(container);\nroot.render(React.createElement(App));';
-        
-        document.body.appendChild(scriptElement);
-      } catch (error) {
-        console.error("[WriCoRe] Manual Babel compilation failed:", error);
-        document.getElementById('root').innerHTML = '<div style="color:#ef4444; padding: 2rem; font-family: monospace;"><h2>Compiler Initialization Failed</h2><p>' + error.message + '</p></div>';
+        if (data.meta) {
+          console.info('[VoyageFlow Router Match]', data.meta);
+        }
+
+        errorBanner.style.display = 'none'; // Clear errors
+        appendMessageBubble('model', rawModelReply);
+        conversationHistory.push({
+          role: 'model',
+          parts: [{ text: rawModelReply }]
+        });
+
+      } catch (err) {
+        removeTypingIndicator(loaderId);
+        showError("Failed to connect to backend endpoint. Please ensure your Cloudflare Worker is deployed live and the WORKER_URL constant inside index.html points to your active subdomain route.");
+      } finally {
+        isRequestActive = false;
+        sendBtn.disabled = false;
+        scrollToBottom();
       }
-    });
+    }
+
+    function appendMessageBubble(role, rawContent) {
+      const row = document.createElement('div');
+      row.className = `chat-row ${role}`;
+
+      if (role === 'model') {
+        const avatar = document.createElement('div');
+        avatar.className = 'avatar-icon';
+        avatar.innerHTML = `
+          <svg viewBox="0 0 24 24" style="width:20px;height:20px;">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M16.2 7.8l-2 6.2-6.2 2 2-6.2z"/>
+          </svg>`;
+        row.appendChild(avatar);
+      }
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+
+      if (role === 'model') {
+        let jsonPayload = null;
+        let cleanText = rawContent;
+
+        // Pattern 1: Markdown JSON block
+        const mdJsonRegex = /```json\s*([\s\S]+?)\s*```/i;
+        const mdMatch = rawContent.match(mdJsonRegex);
+        
+        if (mdMatch) {
+          try {
+            jsonPayload = JSON.parse(mdMatch[1].trim());
+            cleanText = rawContent.replace(mdJsonRegex, '').trim();
+          } catch (e) {
+            console.warn("Failed parsing markdown JSON block", e);
+          }
+        } else {
+          // Pattern 2: Raw curly brackets search
+          const rawJsonRegex = /(\{[\s\S]+?\})/i;
+          const rawMatch = rawContent.match(rawJsonRegex);
+          if (rawMatch) {
+            try {
+              jsonPayload = JSON.parse(rawMatch[1].trim());
+              cleanText = rawContent.replace(rawJsonRegex, '').trim();
+            } catch (e) {
+              console.warn("Failed parsing raw matched curly string", e);
+            }
+          }
+        }
+
+        // Display whatever text is left (Itinerary & travel highlights)
+        if (cleanText.length > 0) {
+          bubble.innerHTML = renderMarkdown(cleanText);
+        }
+
+        // Render Booking summary card if valid JSON payload was parsed
+        if (jsonPayload && jsonPayload.checkin && jsonPayload.location_value) {
+          const cardHtml = createBookingDemandCard(jsonPayload);
+          const cardContainer = document.createElement('div');
+          cardContainer.innerHTML = cardHtml;
+          bubble.appendChild(cardContainer.firstElementChild);
+        }
+        
+        if (bubble.innerHTML.trim() === '') {
+          bubble.innerHTML = '<p>Extraction payload generated successfully.</p>';
+        }
+
+      } else {
+        const p = document.createElement('p');
+        p.textContent = rawContent;
+        bubble.appendChild(p);
+      }
+
+      row.appendChild(bubble);
+      messagesTarget.appendChild(row);
+      scrollToBottom();
+    }
+
+    function appendTypingIndicator() {
+      const loaderId = 'loader-' + Date.now();
+      const row = document.createElement('div');
+      row.className = 'chat-row model';
+      row.id = loaderId;
+
+      const avatar = document.createElement('div');
+      avatar.className = 'avatar-icon';
+      avatar.innerHTML = `
+        <svg viewBox="0 0 24 24" style="width:20px;height:20px;">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M16.2 7.8l-2 6.2-6.2 2 2-6.2z"/>
+        </svg>`;
+      
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.innerHTML = `
+        <div class="typing-indicator" aria-label="VoyageFlow is planning...">
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+        </div>
+      `;
+
+      row.appendChild(avatar);
+      row.appendChild(bubble);
+      messagesTarget.appendChild(row);
+      return loaderId;
+    }
+
+    function removeTypingIndicator(id) {
+      const element = document.getElementById(id);
+      if (element) { element.remove(); }
+    }
+
+    // Markdown Parser
+    function renderMarkdown(text) {
+      if (!text) return '';
+      let html = text.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>');
+      html = html.replace(/```([\s\S]+?)```/g, '<pre><code>$1</code></pre>');
+      html = html.replace(/`([^`\n]+?)`/g, '<code>$1</code>');
+
+      const lines = html.split('\n');
+      let inTable = false;
+      let tableHtml = '';
+      
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (line.startsWith('|') && line.endsWith('|')) {
+          if (!inTable) {
+            inTable = true;
+            tableHtml += '<div class="table-container"><table>';
+          }
+          if (line.match(/^\|[\s-:\\|]+$/)) continue;
+          const cells = line.split('|').slice(1, -1).map(c => c.trim());
+          const isHeader = i === 0 || (lines[i-1] && lines[i-1].includes('|') && lines[i+1] && lines[i+1].match(/^\|[\s-:\\|]+$/));
+          tableHtml += '<tr>' + cells.map(c => isHeader ? `<th>${c}</th>` : `<td>${c}</td>`).join('') + '</tr>';
+        } else {
+          if (inTable) {
+            inTable = false;
+            tableHtml += '</table></div>';
+            lines[i] = tableHtml + '\n' + lines[i];
+            tableHtml = '';
+          }
+        }
+      }
+      if (inTable) {
+        tableHtml += '</table></div>';
+        lines.push(tableHtml);
+      }
+      html = lines.join('\n');
+
+      html = html.replace(/^### (.*?)$/gm, '<h3>$1</h3>');
+      html = html.replace(/^## (.*?)$/gm, '<h2>$1</h2>');
+      html = html.replace(/^# (.*?)$/gm, '<h1>$1</h1>');
+      html = html.replace(/^---$/gm, '<hr>');
+      html = html.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
+      html = html.replace(/\*([^*]+?)\*/g, '<em>$1</em>');
+      html = html.replace(/^\s*[-*]\s+(.*?)$/gm, '<li>$1</li>');
+      html = html.replace(/(<li>.*?<\/li>)/gs, '<ul>$1<\/ul>');
+      html = html.replace(/<\/ul>\s*<ul>/g, '');
+      html = html.replace(/^\s*\d+\.\s+(.*?)$/gm, '<li class="num-item">$1</li>');
+      html = html.replace(/((?:<li class="num-item">.*?<\/li>\s*)+)/gs, '<ol>$1<\/ol>');
+      html = html.replace(/class="num-item"/g, '');
+      html = html.replace(/<\/ol>\s*<ol>/g, '');
+
+      const paragraphs = html.split(/\n{2,}/);
+      html = paragraphs.map(p => {
+        const trimmed = p.trim();
+        if (trimmed.startsWith('<h') || trimmed.startsWith('<ul') || trimmed.startsWith('<ol') || trimmed.startsWith('<pre') || trimmed.startsWith('<div') || trimmed.startsWith('<hr')) {
+          return trimmed;
+        }
+        return `<p>${trimmed.replace(/\n/g, '<br>')}</p>`;
+      }).join('');
+
+      return html;
+    }
+
+    // App Initialization
+    window.onload = function() {
+      initializeSuggestions();
+    }
   </script>
 </body>
 </html>
