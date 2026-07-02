@@ -1,14 +1,13 @@
-[README.md](https://github.com/user-attachments/files/28417612/README.md)
 # WriCoRe — Write · Code · Research
-**A Multi-LLM AI workspace with three specialized agents — built for people who think better with a thinking partner.**
+**A dual-engine AI workspace with three specialized agents — built for people who think better with a thinking partner.**
 
-![Status](https://img.shields.io/badge/status-active-brightgreen) ![Version](https://img.shields.io/badge/version-2.6-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Multi-LLM](https://img.shields.io/badge/Multi--LLM-4%20Providers-purple)
+![Status](https://img.shields.io/badge/status-active-brightgreen) ![Version](https://img.shields.io/badge/version-3.0-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Engine](https://img.shields.io/badge/Engine-Gemini%20%2B%20Groq-purple)
 
 ---
 
 ## What Is WriCoRe?
 
-WriCoRe brings three specialized AI agents into one clean, focused workspace — powered by your choice of AI provider. No switching between tools, no re-explaining context, no setup friction. Just start.
+WriCoRe brings three specialized AI agents into one clean, focused workspace — powered by a dual-engine backend that automatically routes requests to the best available provider. No API keys required from users. No switching between tools. No re-explaining context. Just start.
 
 | Agent | Role | Best For |
 |-------|------|----------|
@@ -16,7 +15,7 @@ WriCoRe brings three specialized AI agents into one clean, focused workspace —
 | 💻 **Coding Agent** | Full-stack engineering & debugging assistant | Writing code, explaining algorithms, fixing bugs |
 | 🔍 **Research Agent** | Deep analysis & grounded researcher | Factual reports, comparisons, structured outlines |
 
-Each agent has its own purpose-built system prompt, starter prompts, and AI safeguards — so you get focused, consistent help without babysitting the AI.
+Each agent has its own purpose-built system prompt, starter suggestions, and AI safeguards — so you get focused, consistent help without babysitting the AI.
 
 ---
 
@@ -24,109 +23,135 @@ Each agent has its own purpose-built system prompt, starter prompts, and AI safe
 
 👉 **[Try WriCoRe Live](https://james75x2-design.github.io/wricore-workspace)**
 
-> No account needed. Just bring a free API key — see below for how to get one in 2 minutes.
+No account needed. No API key required. Fully operational on load.
 
 ---
 
-## 🔑 Getting a Free API Key
+## 🤖 Dual-Engine Architecture (v3.0)
 
-You don't need to pay anything to use WriCoRe. Two free options:
+WriCoRe v3.0 uses a **Cloudflare Worker** as a secure backend proxy that manages two AI providers automatically:
 
-**Option 1 — OpenRouter (Recommended)**
-- Go to [openrouter.ai](https://openrouter.ai)
-- Sign up for a free account
-- Go to API Keys → Create Key
-- No credit card required
-- Access to multiple free models including Llama, Gemma, Qwen, and Kimi
+```
+Browser → Cloudflare Worker → Gemini (primary)
+                            ↘ Groq (fallback, if Gemini fails)
+```
 
-**Option 2 — Groq**
-- Go to [console.groq.com](https://console.groq.com)
-- Sign up for a free account
-- Go to API Keys → Create API Key
-- No credit card required
-- Extremely fast inference — some of the fastest free models available
+**Google Gemini** is tried first on every request. If Gemini fails for any reason — rate limit, safety block, timeout, missing key, network error, or empty response — the Worker automatically retries with **Groq** without the user ever knowing. Every response comes back in OpenAI-compatible format regardless of which provider handled it.
 
-Once you have your key, paste it into WriCoRe's Connect modal and select your provider. Done.
+The frontend header shows the **active engine** used for each response in real time (`GEMINI-2.0-FLASH`, `LLAMA-3.3-70B-VERSATILE`, or `OFFLINE SIMULATION`).
 
----
+### Fallback trigger conditions
 
-## 🤖 Supported AI Providers
-
-WriCoRe v2.6 supports four AI backends — switch anytime:
-
-| Provider | Free Tier | Best For |
-|----------|-----------|----------|
-| **Google Gemini** | Yes (limited) | Research agent with live Google Search grounding |
-| **OpenRouter** | Yes | Access to 7+ free models in one place |
-| **Groq** | Yes | Ultra-fast responses — 500-840+ tokens/second |
-| **GitHub Models** | Yes (with GitHub account) | Access to GPT-5, o4-mini, Phi-4 |
+The Worker falls back from Gemini to Groq on:
+- Non-2xx HTTP status from Gemini
+- Gemini safety block (`promptFeedback.blockReason`)
+- Empty or missing candidates/parts in the response
+- JSON parse failure on the Gemini response
+- Network error or 20-second timeout
+- Missing `GEMINI_API_KEY` environment variable
 
 ---
 
 ## ✨ Features
 
 - Three specialized AI agents — Writing, Coding, Research
-- Four AI provider options — Gemini, OpenRouter, Groq, GitHub Models
+- Dual-engine backend — Gemini primary, Groq fallback, fully automatic
+- Live engine indicator — shows which AI model handled each response
 - Purpose-built system prompts — no generic chatbot vagueness
-- AI safeguards built into every agent
-- Starter prompts to help you get moving immediately
-- Text-to-speech — listen to any response read aloud
-- Export to Markdown — download any response as a .md file
-- Draft to Gmail — send any response directly to Gmail
-- Branch chat — rewind and restart from any message
-- Feedback buttons — thumbs up/down on every response
+- Temporal anchoring — every request includes the real current date to prevent date hallucination
+- Starter suggestions — three pre-built prompts per agent to get moving immediately
+- Text-to-speech — listen to any response read aloud (Web Speech API)
+- Export to Markdown — download any response as a `.md` file
+- Draft to Gmail — open any response directly in Gmail Compose
+- Branch chat — rewind and restart the conversation from any message
+- Feedback buttons — thumbs up/down on every AI response
+- Copy to clipboard — one-click copy on any response or code block
+- Syntax-highlighted code blocks — with per-block copy button
+- Offline Demo Mode — test the full interface without any network connection
 - Session management — clear and restart instantly
 - Clean dark UI — focused and distraction-free
-- Runs entirely in the browser — no server, no data collection
+- No server-side user data — API keys never touch the frontend
 
 ---
 
-## 🔒 Security & Privacy
+## 🔒 Security Architecture
 
-WriCoRe stores your API key in your browser's localStorage — on your own device only. Your key is never sent to any WriCoRe server because there isn't one. All API calls go directly from your browser to your chosen AI provider.
-
-**Recommendations:**
-- Don't use WriCoRe on shared or public computers
-- Use provider-level key restrictions where available (e.g. domain restrictions)
-- Revoke and regenerate your key anytime from your provider's dashboard
-
-For a production deployment, server-side key management would be implemented. WriCoRe is currently a portfolio and personal productivity project.
+| Layer | Implementation |
+|-------|---------------|
+| API key storage | Cloudflare Worker encrypted environment secrets |
+| Frontend exposure | Zero — keys never appear in HTML, JS, or network responses |
+| CORS policy | Restricted to `james75x2-design.github.io` and `*.github.io` |
+| Request validation | Worker rejects non-POST, malformed JSON, and empty message arrays |
+| Provider errors | Sanitized before returning to client — raw API errors never forwarded |
 
 ---
 
 ## 🛠️ How It's Built
 
-- **Single-file HTML app** — React 18, Tailwind CSS, Babel — no build step required
-- **Multi-provider API architecture** — Gemini, OpenRouter, Groq, GitHub Models
-- **Exponential backoff** — automatic retry logic for network failures
-- **Custom markdown renderer** — renders AI output as clean formatted text with syntax-highlighted code blocks
-- **Text-to-speech engine** — Web Speech API with markdown stripping for clean audio
-- **Client-side only** — no backend, no database, no tracking
+**Frontend**
+- Single-file HTML app — React 18, Tailwind CSS, Babel (in-browser, no build step)
+- CDN: `cdn.jsdelivr.net` for React, ReactDOM, and Babel (reliable behind ad-blockers and firewalls)
+- JSX compiled at runtime using Babel's classic runtime (prevents `import` statement injection into non-module scripts)
+- Custom markdown renderer — renders AI output as formatted text with syntax-highlighted, copyable code blocks
+- Text-to-speech via Web Speech API with markdown stripping for clean audio
+
+**Backend**
+- Cloudflare Worker (free tier — 100,000 requests/day)
+- Helper functions: `jsonResponse()`, `handleCors()`, `withTimeout()`, `callGemini()`, `callGroq()`, `convertOpenAIMessagesToGemini()`, `extractGeminiText()`, `normalizeOpenAIResponse()`
+- OpenAI message format → Gemini format conversion (system → `systemInstruction`, user/assistant → Gemini turn structure with consecutive-role merging)
+- 20-second timeout on both providers via `AbortController`
+- Always returns OpenAI-compatible `choices[0].message.content` shape
+
+**Hosting**
+- Frontend: GitHub Pages (`james75x2-design.github.io/wricore-workspace`)
+- Backend: Cloudflare Workers (`wricore.james75x2.workers.dev`)
 
 ---
 
-## 🚦 Getting Started
+## 🚦 Getting Started (Self-Hosting)
 
 ### Option 1 — Use the Live Version
-Click the live demo link above. No installation needed.
+Click the live demo link above. No setup needed.
 
-### Option 2 — Run Locally
+### Option 2 — Deploy Your Own
+
+**1. Clone the repo**
 ```bash
 git clone https://github.com/james75x2-design/wricore-workspace.git
 cd wricore-workspace
-open index.html
 ```
-Open in any modern browser. Enter your API key in the Connect modal. Start working.
+
+**2. Deploy the Cloudflare Worker**
+- Go to [dash.cloudflare.com](https://dash.cloudflare.com) → Workers & Pages → Create Worker
+- Paste the contents of `cloudflare_worker_proxy.js` into the editor
+- Click **Save and Deploy**
+- Go to **Settings → Variables and Secrets** and add:
+  - `GEMINI_API_KEY` (Secret) — get from [aistudio.google.com](https://aistudio.google.com)
+  - `GROQ_API_KEY` (Secret) — get from [console.groq.com](https://console.groq.com)
+  - `GEMINI_MODEL` (Text, optional) — defaults to `gemini-2.0-flash`
+  - `GROQ_MODEL` (Text, optional) — defaults to `llama-3.3-70b-versatile`
+
+**3. Update the Worker URL in `index.html`**
+
+Find this line and replace with your own Worker URL:
+```js
+const WORKER_URL = 'https://wricore.james75x2.workers.dev/';
+```
+
+**4. Deploy the frontend to GitHub Pages**
+- Push `index.html` to your repo's `main` branch
+- Go to **Settings → Pages** → Source: `main` branch → Save
+- Your app will be live at `https://<your-username>.github.io/<repo-name>`
 
 ---
 
 ## 🗺️ Roadmap
 
 - [ ] Mobile-responsive layout improvements
-- [ ] Memory and context persistence across sessions
+- [ ] Persistent conversation history across sessions
 - [ ] Additional agent personas (Data Agent, Design Agent)
+- [ ] Custom system prompt editor — define your own agents
 - [ ] MCP integration for enterprise workflow connectivity
-- [ ] Custom system prompt editor — let users define their own agents
 - [ ] Integration with AGAD — Assisted Generation of Approval Documents
 
 ---
@@ -137,7 +162,7 @@ I'm an externalizer — someone who thinks more clearly by working things throug
 
 For years, getting started on complex tasks felt slow and frustrating. AI changed that. But jumping between different tools, re-explaining context each time, and figuring out how to prompt a general chatbot for a specific task added friction back in.
 
-WriCoRe removes that friction. One workspace. Three focused agents. Four AI providers. No setup. Just start.
+WriCoRe removes that friction. One workspace. Three focused agents. Two AI providers with automatic failover. No setup. Just start.
 
 ---
 
@@ -162,6 +187,16 @@ Building AI tools that solve real human problems.
 ## 📄 License
 
 MIT License — free to use, modify, and share with attribution.
+
+---
+
+## 📋 Version History
+
+| Version | Changes |
+|---------|---------|
+| v3.0 | Dual-engine backend (Gemini primary + Groq fallback via Cloudflare Worker), live engine indicator, CDN switched to jsdelivr, Babel classic runtime fix, `React.createElement` render fix |
+| v2.6 | Groq-only with Cloudflare Worker proxy, text-to-speech, markdown export, branch chat, feedback buttons |
+| v2.5 | Initial multi-provider version (Gemini, OpenRouter, Groq, GitHub Models) |
 
 ---
 
