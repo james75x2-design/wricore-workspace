@@ -2,6 +2,7 @@ WriCoRe — Write · Code · Research
 
 A free AI-powered multi-agent workspace with Writing, Coding, and Research agents — backed by a secure Dual-Engine Cloudflare Proxy.
 
+----
 ⚡ What Is WriCoRe?
 
 WriCoRe brings three specialized AI agents into one clean, focused workspace. No sign-ups required, and your API keys are never exposed in the browser.
@@ -40,6 +41,7 @@ Fallback Engine: Groq's Llama 3.3 and 3.1 models. If Gemini hits a rate limit, t
 
 Your active engine is dynamically displayed in the top-left corner of the workspace UI.
 
+----
 🚦 Setup Instructions
 
 Step 1 — Deploy the Secure Cloudflare Proxy
@@ -62,6 +64,7 @@ GROQ_API_KEY — Get it free from the Groq Console
 
 Copy your Worker's URL (e.g., https://wricore-proxy.yourname.workers.dev/).
 
+----
 Step 2 — Connect the Frontend HTML
 
 WriCoRe is a pristine, single-file web application. No npm install, no build tools.
@@ -72,9 +75,9 @@ Find Line 103:
 
 const WORKER_URL = 'https://wricore.james75x2.workers.dev/';
 
-
 Replace the link with the URL of your new Cloudflare Worker.
 
+----
 Save the file and double-click index.html to open it in your browser.
 
 You are now running a highly secure, Dual-Engine AI workspace!
@@ -91,6 +94,7 @@ Copy formatted text or code blocks instantly.
 
 Export AI responses directly to .md Markdown files.
 
+----
 Text-to-speech integration to read responses aloud.
 
 Branch timelines to rewind conversations.
@@ -101,4 +105,5 @@ Draft directly into Gmail.
 
 MIT License — free to use, modify, and share with attribution.
 
+----
 © 2026 James Earl C. Felipe. Built with Claude and Gemini. Designed for thinkers.
