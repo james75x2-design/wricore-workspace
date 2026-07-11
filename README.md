@@ -1,7 +1,29 @@
 # WriCoRe — Write · Code · Research
 **A dual-engine AI workspace with three specialized agents — built for people who think better with a thinking partner.**
 
-![Status](https://img.shields.io/badge/status-active-brightgreen) ![Version](https://img.shields.io/badge/version-3.0-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Engine](https://img.shields.io/badge/Engine-Gemini%20%2B%20Groq-purple)
+![Status](https://img.shields.io/badge/status-live-brightgreen) ![Worker](https://img.shields.io/badge/worker-v3.1-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Backend](https://img.shields.io/badge/backend-Cloudflare%20Workers-orange) ![Engine](https://img.shields.io/badge/AI-Gemini%20%2B%20Groq-purple) ![Frontend](https://img.shields.io/badge/frontend-GitHub%20Pages-lightgrey)
+
+---
+
+## 📚 Table of Contents
+
+- [What Is WriCRe?
+- #-live-demo
+- [🖼️ Screenshts
+- #️-architecture
+- [🤖 Dual-Engine Architecture](#-dual-engine-architecture)
+- ✨ Features
+- #-api-reference
+- [🔒 Security Architecture](#-security-architecture)
+- 🛠️ How It's Built
+- #️-repository-structure
+- [🚦Getting Started (Self-Hosting)
+- #️-roadmap
+- [💡 Why I Built This
+- #-related-projects
+- [👤 About](#-about)
+- 📄 License
+- #-version-history
 
 ---
 
@@ -21,15 +43,72 @@ Each agent has its own purpose-built system prompt, starter suggestions, and AI 
 
 ## 🚀 Live Demo
 
-👉 **[Try WriCoRe Live](https://james75x2-design.github.io/wricore-workspace)**
+👉 **[Try Writtps://james75x2-design.github.io/wricore-workspace/)**
+
+Backend health check: https://wricore.james75x2.workers.dev/health
 
 No account needed. No API key required. Fully operational on load.
 
 ---
 
-## 🤖 Dual-Engine Architecture (v3.0)
+## 🖼️ Screenshots
 
-WriCoRe v3.0 uses a **Cloudflare Worker** as a secure backend proxy that manages two AI providers automatically:
+### 1. Writing Agent (WRITE-BOT v3.1)
+
+Your premium writing partner for essays, blogs, emails, summaries, and complex copy edits.
+
+<img src="https://raw.githubusercontent.com/james75x2-design/wricore-workspace/main/docs/screenshots/01-writing-agent.png" alt="Writing Agent (WRITE-BOT v3.1)">
+
+---
+
+### 2. Coding Agent (DEV-BOT v3.1)
+
+Your interactive code companion. Writes clean code, explains algorithms, and refactors bugs.
+
+<img src="https://raw.githubusercontent.com/james75x2-design/wricore-workspace/main/docs/screenshots/02-coding-agent.png" alt="Coding Agent (DEV-BOT v3.1)">
+
+---
+
+### 3. Research Agent (ANALYST-BOT v3.1)
+
+Empowered with factual grounding to synthesize deep, logical reports.
+
+<img src="https://raw.githubusercontent.com/james75x2-design/wricore-workspace/main/docs/screenshots/03-research-agent.png" alt="Research Agent (ANALYST-BOT v3.1)">
+
+## 🏗️ Architecture
+
+```text
+┌───────────────────────┐       ┌──────────────────────────┐       ┌──────────────────────┐
+│  index.html           │       │  Cloudflare Worker (v3.1)│       │  Google Gemini       │
+│  (GitHub Pages)       │  POST │  cloudflare_worker_      │  API  │  gemini-2.0-flash    │
+│  Terminal-aesthetic   │ ────▶ │  proxy.js                │ ────▶ │  (Primary)           │
+│  workspace            │       │  • CORS allowlist        │       └──────────────────────┘
+│                       │       │  • Payload validation    │                 │
+│  • 3 agents:          │       │  • Dual-engine queue     │       Fallback  │ on error /
+│    - Writing (cyan)   │       │  • 25s timeout AbortCtrl │                 │ rate-limit
+│    - Coding (purple)  │       │  • Structured logging    │                 ▼
+│    - Research (green) │  JSON │  • /health endpoint      │       ┌──────────────────────┐
+│  • Prompt templates   │ ◀──── │  • Version + latency     │  API  │  Groq                │
+│  • TTS + Export       │       └──────────────────────────┘ ────▶ │  llama-3.3-70b       │
+│  • Branch chat        │                                          │  (Fallback)          │
+│                       │                                          └──────────────────────┘
+└───────────────────────┘
+```
+
+**Data flow**
+
+1. User picks an agent (Writing / Coding / Research) from the top switcher.
+2. UI applies the agent's theme, prompt templates, and system prompt.
+3. Message POSTed to Cloudflare Worker with the agent-specific context.
+4. Worker validates payload, tries Gemini first, falls to Groq on failure.
+5. Response returned as JSON with model name + metadata.
+6. UI renders response with the active agent's styling and shows which engine answered.
+
+---
+
+## 🤖 Dual-Engine Architecture
+
+WriCoRe uses a **Cloudflare Worker** as a secure backend proxy that manages two AI providers automatically:
 
 ```
 Browser → Cloudflare Worker → Gemini (primary)
@@ -47,7 +126,7 @@ The Worker falls back from Gemini to Groq on:
 - Gemini safety block (`promptFeedback.blockReason`)
 - Empty or missing candidates/parts in the response
 - JSON parse failure on the Gemini response
-- Network error or 20-second timeout
+- Network error or 25-second timeout
 - Missing `GEMINI_API_KEY` environment variable
 
 ---
@@ -74,15 +153,77 @@ The Worker falls back from Gemini to Groq on:
 
 ---
 
+## 📡 API Reference
+
+### `GET /health`
+
+Returns operational status. Useful for uptime monitors.
+
+```bash
+curl https://wricore.james75x2.workers.dev/health
+```
+
+Response:
+```json
+{
+  "status": "ok",
+  "service": "wricore-worker",
+  "version": "3.1.0",
+  "timestamp": "2026-07-11T00:00:00.000Z"
+}
+```
+
+### `POST /`
+
+Main chat endpoint. OpenAI-compatible message format.
+
+```bash
+curl -X POST https://wricore.james75x2.workers.dev/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messages": [
+      { "role": "system", "content": "You are a writing assistant." },
+      { "role": "user", "content": "Draft a professional email declining a meeting." }
+    ],
+    "temperature": 0.7
+  }'
+```
+
+Success response (200):
+```json
+{
+  "choices": [{ "message": { "role": "assistant", "content": "…" } }],
+  "model": "GEMINI-2.0-FLASH",
+  "meta": { "version": "3.1", "latency_ms": 780 }
+}
+```
+
+Error responses:
+
+| Status | Meaning |
+|---|---|
+| `400` | Malformed payload |
+| `404` | Unknown path |
+| `405` | Wrong HTTP method |
+| `429` | All providers rate-limited |
+| `502` | All providers failed |
+
+**Payload limits:** Max 30 messages per request, max 8000 characters per message.
+
+**CORS:** Locked to GitHub Pages + localhost origins (v3.1). Update `ALLOWED_ORIGINS` in the worker if you fork.
+
+---
+
 ## 🔒 Security Architecture
 
 | Layer | Implementation |
 |-------|---------------|
 | API key storage | Cloudflare Worker encrypted environment secrets |
 | Frontend exposure | Zero — keys never appear in HTML, JS, or network responses |
-| CORS policy | Restricted to `james75x2-design.github.io` and `*.github.io` |
-| Request validation | Worker rejects non-POST, malformed JSON, and empty message arrays |
+| CORS policy | Origin allowlist (v3.1) — `james75x2-design.github.io` + localhost dev |
+| Request validation | Worker rejects non-POST, malformed JSON, oversized payloads, empty message arrays |
 | Provider errors | Sanitized before returning to client — raw API errors never forwarded |
+| Payload limits | Max 30 messages, max 8000 chars per message |
 
 ---
 
@@ -99,12 +240,34 @@ The Worker falls back from Gemini to Groq on:
 - Cloudflare Worker (free tier — 100,000 requests/day)
 - Helper functions: `jsonResponse()`, `handleCors()`, `withTimeout()`, `callGemini()`, `callGroq()`, `convertOpenAIMessagesToGemini()`, `extractGeminiText()`, `normalizeOpenAIResponse()`
 - OpenAI message format → Gemini format conversion (system → `systemInstruction`, user/assistant → Gemini turn structure with consecutive-role merging)
-- 20-second timeout on both providers via `AbortController`
+- 25-second timeout on both providers via `AbortController`
+- Structured JSON logging (v3.1) — severity-aware for Cloudflare log search
 - Always returns OpenAI-compatible `choices[0].message.content` shape
 
 **Hosting**
 - Frontend: GitHub Pages (`james75x2-design.github.io/wricore-workspace`)
 - Backend: Cloudflare Workers (`wricore.james75x2.workers.dev`)
+
+---
+
+## 🏗️ Repository Structure
+
+```text
+wricore-workspace/
+├── index.html                    # Frontend — single-file React app with 3 agents
+├── cloudflare_worker_proxy.js    # Cloudflare Worker — Gemini + Groq gateway (v3.1)
+├── README.md                     # This file
+├── LICENSE                       # MIT
+├── HARNESS.md                    # Evaluation harness for the 3 agents
+├── .env.example                  # Example env vars for local dev
+└── docs/
+    └── screenshots/              # UI screenshots per agent
+        ├── 01-writing-agent.png
+        ├── 02-coding-agent.png
+        └── 03-research-agent.png
+```
+
+Deployed via **GitHub Pages** from `main`. Backend runs on **Cloudflare Workers** at `wricore.james75x2.workers.dev`.
 
 ---
 
@@ -128,15 +291,16 @@ cd wricore-workspace
 - Go to **Settings → Variables and Secrets** and add:
   - `GEMINI_API_KEY` (Secret) — get from [aistudio.google.com](https://aistudio.google.com)
   - `GROQ_API_KEY` (Secret) — get from [console.groq.com](https://console.groq.com)
-  - `GEMINI_MODEL` (Text, optional) — defaults to `gemini-2.0-flash`
-  - `GROQ_MODEL` (Text, optional) — defaults to `llama-3.3-70b-versatile`
+- Verify: `curl https://<your-worker>.workers.dev/health`
 
 **3. Update the Worker URL in `index.html`**
 
 Find this line and replace with your own Worker URL:
-```js
+```javascript
 const WORKER_URL = 'https://wricore.james75x2.workers.dev/';
 ```
+
+Also update `ALLOWED_ORIGINS` in the Worker if you fork this project to include your GitHub Pages URL.
 
 **4. Deploy the frontend to GitHub Pages**
 - Push `index.html` to your repo's `main` branch
@@ -147,12 +311,16 @@ const WORKER_URL = 'https://wricore.james75x2.workers.dev/';
 
 ## 🗺️ Roadmap
 
+- [x] Evaluation harness (`HARNESS.md`) for measuring quality per agent
+- [x] Worker hardening (v3.1) — CORS allowlist, /health endpoint, structured logging, timeouts
 - [ ] Mobile-responsive layout improvements
 - [ ] Persistent conversation history across sessions
 - [ ] Additional agent personas (Data Agent, Design Agent)
 - [ ] Custom system prompt editor — define your own agents
 - [ ] MCP integration for enterprise workflow connectivity
 - [ ] Integration with AGAD — Assisted Generation of Approval Documents
+- [ ] Automated harness runner (Node.js script)
+- [ ] Streaming responses for faster perceived latency
 
 ---
 
@@ -168,6 +336,10 @@ WriCoRe removes that friction. One workspace. Three focused agents. Two AI provi
 
 ## 🔗 Related Projects
 
+**VoyageFlow — AI Travel Concierge** *(Live)*
+A free, zero-friction AI travel concierge with a Premium Booking Desk — instant itineraries and pre-filled deep links for flights, hotels, tours, and insurance. Built with the same dual-engine architecture (Gemini + Groq via Cloudflare Workers) and scored 91.6% on AgentTalent's Sensei evaluation suite.
+🔗 [Try VoyageFlow Live](https://james75x2-design.github.io/VoyageFlow/)
+
 **AGAD — Assisted Generation of Approval Documents** *(In Development)*
 An AI-powered tool helping Filipino patients and their families navigate hospital LOA and insurance approval processes — built from direct personal experience with the problem. Designed for the exhausted family member standing in a hospital billing queue at 3am, trying to navigate a system they don't understand.
 *Repository coming soon.*
@@ -180,13 +352,13 @@ An AI-powered tool helping Filipino patients and their families navigate hospita
 AI Solutions Designer | Enterprise IT Professional
 Building AI tools that solve real human problems.
 
-🔗 [LinkedIn](https://linkedin.com/in/james-earl-felipe-13359665) · 📧 james75x2@gmail.com
+🔗 [LinkedIn](https://linkedin.com/in/james-ear359665 · 📧 james75x2@gmail.com
 
 ---
 
 ## 📄 License
 
-MIT License — free to use, modify, and share with attribution.
+MIT License — free to use, modify, and share with attribution. See `LICENSE` for full text.
 
 ---
 
@@ -194,6 +366,7 @@ MIT License — free to use, modify, and share with attribution.
 
 | Version | Changes |
 |---------|---------|
+| **v3.1** | CORS allowlist, `/health` endpoint, structured JSON logging, 25s timeout protection via `AbortController`, payload validation (max 30 messages, max 8000 chars), version + latency metadata in every response, cleaner model queue |
 | v3.0 | Dual-engine backend (Gemini primary + Groq fallback via Cloudflare Worker), live engine indicator, CDN switched to jsdelivr, Babel classic runtime fix, `React.createElement` render fix |
 | v2.6 | Groq-only with Cloudflare Worker proxy, text-to-speech, markdown export, branch chat, feedback buttons |
 | v2.5 | Initial multi-provider version (Gemini, OpenRouter, Groq, GitHub Models) |
