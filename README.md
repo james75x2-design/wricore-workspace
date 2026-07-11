@@ -5,28 +5,6 @@
 
 ---
 
-## 📚 Table of Contents
-
-- [What Is WriCRe?
-- #-live-demo
-- [🖼️ Screenshts
-- #️-architecture
-- [🤖 Dual-Engine Architecture](#-dual-engine-architecture)
-- ✨ Features
-- #-api-reference
-- [🔒 Security Architecture](#-security-architecture)
-- 🛠️ How It's Built
-- #️-repository-structure
-- [🚦Getting Started (Self-Hosting)
-- #️-roadmap
-- [💡 Why I Built This
-- #-related-projects
-- [👤 About](#-about)
-- 📄 License
-- #-version-history
-
----
-
 ## What Is WriCoRe?
 
 WriCoRe brings three specialized AI agents into one clean, focused workspace — powered by a dual-engine backend that automatically routes requests to the best available provider. No API keys required from users. No switching between tools. No re-explaining context. Just start.
@@ -43,7 +21,7 @@ Each agent has its own purpose-built system prompt, starter suggestions, and AI 
 
 ## 🚀 Live Demo
 
-👉 **[Try Writtps://james75x2-design.github.io/wricore-workspace/)**
+👉 **[Try WriCoRe Live](https://james75x2-design.github.io/wricore-workspace/)**
 
 Backend health check: https://wricore.james75x2.workers.dev/health
 
@@ -75,25 +53,11 @@ Empowered with factual grounding to synthesize deep, logical reports.
 
 <img src="https://raw.githubusercontent.com/james75x2-design/wricore-workspace/main/docs/screenshots/03-research-agent.png" alt="Research Agent (ANALYST-BOT v3.1)">
 
+---
+
 ## 🏗️ Architecture
 
-```text
-┌───────────────────────┐       ┌──────────────────────────┐       ┌──────────────────────┐
-│  index.html           │       │  Cloudflare Worker (v3.1)│       │  Google Gemini       │
-│  (GitHub Pages)       │  POST │  cloudflare_worker_      │  API  │  gemini-2.0-flash    │
-│  Terminal-aesthetic   │ ────▶ │  proxy.js                │ ────▶ │  (Primary)           │
-│  workspace            │       │  • CORS allowlist        │       └──────────────────────┘
-│                       │       │  • Payload validation    │                 │
-│  • 3 agents:          │       │  • Dual-engine queue     │       Fallback  │ on error /
-│    - Writing (cyan)   │       │  • 25s timeout AbortCtrl │                 │ rate-limit
-│    - Coding (purple)  │       │  • Structured logging    │                 ▼
-│    - Research (green) │  JSON │  • /health endpoint      │       ┌──────────────────────┐
-│  • Prompt templates   │ ◀──── │  • Version + latency     │  API  │  Groq                │
-│  • TTS + Export       │       └──────────────────────────┘ ────▶ │  llama-3.3-70b       │
-│  • Branch chat        │                                          │  (Fallback)          │
-│                       │                                          └──────────────────────┘
-└───────────────────────┘
-```
+<img src="https://raw.githubusercontent.com/james75x2-design/wricore-workspace/main/docs/screenshots/architecture.png" alt="WriCoRe Architecture Diagram — dual-engine AI workspace with Gemini primary and Groq fallback">
 
 **Data flow**
 
@@ -238,8 +202,8 @@ Error responses:
 
 **Backend**
 - Cloudflare Worker (free tier — 100,000 requests/day)
-- Helper functions: `jsonResponse()`, `handleCors()`, `withTimeout()`, `callGemini()`, `callGroq()`, `convertOpenAIMessagesToGemini()`, `extractGeminiText()`, `normalizeOpenAIResponse()`
-- OpenAI message format → Gemini format conversion (system → `systemInstruction`, user/assistant → Gemini turn structure with consecutive-role merging)
+- Helper functions: `jsonResponse()`, `getCorsHeaders()`, `fetchWithTimeout()`, `logEvent()`, `validateMessages()`
+- OpenAI-compatible endpoint for both Gemini and Groq
 - 25-second timeout on both providers via `AbortController`
 - Structured JSON logging (v3.1) — severity-aware for Cloudflare log search
 - Always returns OpenAI-compatible `choices[0].message.content` shape
@@ -261,6 +225,7 @@ wricore-workspace/
 ├── HARNESS.md                    # Evaluation harness for the 3 agents
 ├── .env.example                  # Example env vars for local dev
 └── docs/
+    ├── architecture.png          # Architecture diagram
     └── screenshots/              # UI screenshots per agent
         ├── 01-writing-agent.png
         ├── 02-coding-agent.png
@@ -352,7 +317,7 @@ An AI-powered tool helping Filipino patients and their families navigate hospita
 AI Solutions Designer | Enterprise IT Professional
 Building AI tools that solve real human problems.
 
-🔗 [LinkedIn](https://linkedin.com/in/james-ear359665 · 📧 james75x2@gmail.com
+🔗 https://linkedin.com/in/james-earl-felipe-13359665 · 📧 james75x2@gmail.com
 
 ---
 
