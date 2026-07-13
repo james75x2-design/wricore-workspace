@@ -1,0 +1,160 @@
+{
+  "generated_at": "2026-07-13T23:40:54.027Z",
+  "total": 5,
+  "passed": 5,
+  "failed": 0,
+  "retrieval_passed": 5,
+  "answer_passed": 5,
+  "overall_pass_rate": 1,
+  "results": [
+    {
+      "id": "eval-001",
+      "query": "what is the RAG goal",
+      "pass": true,
+      "retrieval": {
+        "pass": true,
+        "expected_chunk_ids": [
+          "project-notes::001"
+        ],
+        "retrieved_chunk_ids": [
+          "project-notes::001",
+          "project-notes::002",
+          "project-notes::003",
+          "project-notes::004",
+          "wricore-readme::001"
+        ]
+      },
+      "answer": {
+        "pass": true,
+        "expected_citation_ids": [
+          "project-notes::001"
+        ],
+        "actual_citation_ids": [
+          "project-notes::001"
+        ],
+        "unanswered_expected": false,
+        "unanswered_actual": false,
+        "validation_valid": true,
+        "answer_preview": "The RAG goal is to retrieve relevant knowledge-base chunks and return grounded answers with citations [project-notes::001]."
+      }
+    },
+    {
+      "id": "eval-002",
+      "query": "what is context harness",
+      "pass": true,
+      "retrieval": {
+        "pass": true,
+        "expected_chunk_ids": [
+          "project-notes::002"
+        ],
+        "retrieved_chunk_ids": [
+          "project-notes::001",
+          "project-notes::002",
+          "project-notes::003",
+          "project-notes::004",
+          "wricore-readme::001"
+        ]
+      },
+      "answer": {
+        "pass": true,
+        "expected_citation_ids": [
+          "project-notes::002"
+        ],
+        "actual_citation_ids": [
+          "project-notes::002"
+        ],
+        "unanswered_expected": false,
+        "unanswered_actual": false,
+        "validation_valid": true,
+        "answer_preview": "The context harness controls what source material enters the model prompt [project-notes::002]."
+      }
+    },
+    {
+      "id": "eval-003",
+      "query": "what is constraint harness",
+      "pass": true,
+      "retrieval": {
+        "pass": true,
+        "expected_chunk_ids": [
+          "project-notes::003"
+        ],
+        "retrieved_chunk_ids": [
+          "project-notes::001",
+          "project-notes::002",
+          "project-notes::003",
+          "project-notes::004",
+          "wricore-readme::001"
+        ]
+      },
+      "answer": {
+        "pass": true,
+        "expected_citation_ids": [
+          "project-notes::003"
+        ],
+        "actual_citation_ids": [
+          "project-notes::003"
+        ],
+        "unanswered_expected": false,
+        "unanswered_actual": false,
+        "validation_valid": true,
+        "answer_preview": "The constraint harness requires answers to cite chunk IDs and avoid hallucination [project-notes::003]."
+      }
+    },
+    {
+      "id": "eval-004",
+      "query": "what is evaluation harness",
+      "pass": true,
+      "retrieval": {
+        "pass": true,
+        "expected_chunk_ids": [
+          "project-notes::004"
+        ],
+        "retrieved_chunk_ids": [
+          "project-notes::001",
+          "project-notes::002",
+          "project-notes::003",
+          "project-notes::004",
+          "wricore-readme::001"
+        ]
+      },
+      "answer": {
+        "pass": true,
+        "expected_citation_ids": [
+          "project-notes::004"
+        ],
+        "actual_citation_ids": [
+          "project-notes::004"
+        ],
+        "unanswered_expected": false,
+        "unanswered_actual": false,
+        "validation_valid": true,
+        "answer_preview": "The evaluation harness checks whether answers are grounded and supported by retrieved chunks [project-notes::004]."
+      }
+    },
+    {
+      "id": "eval-005",
+      "query": "what is the capital of France",
+      "pass": true,
+      "retrieval": {
+        "pass": true,
+        "expected_chunk_ids": [],
+        "retrieved_chunk_ids": [
+          "project-notes::001",
+          "project-notes::002",
+          "project-notes::003",
+          "project-notes::004",
+          "wricore-readme::001"
+        ]
+      },
+      "answer": {
+        "pass": true,
+        "expected_citation_ids": [],
+        "actual_citation_ids": [],
+        "unanswered_expected": true,
+        "unanswered_actual": true,
+        "validation_valid": true,
+        "answer_preview": "I don't have enough evidence in the current WriCoRe knowledge base to answer that."
+      }
+    }
+  ]
+}

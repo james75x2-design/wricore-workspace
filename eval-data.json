@@ -1,0 +1,37 @@
+[
+  {
+    "id": "eval-001",
+    "query": "what is the RAG goal",
+    "expected_chunk_ids": ["project-notes::001"],
+    "expected_citation_ids": ["project-notes::001"],
+    "expect_unanswered": false
+  },
+  {
+    "id": "eval-002",
+    "query": "what is context harness",
+    "expected_chunk_ids": ["project-notes::002"],
+    "expected_citation_ids": ["project-notes::002"],
+    "expect_unanswered": false
+  },
+  {
+    "id": "eval-003",
+    "query": "what is constraint harness",
+    "expected_chunk_ids": ["project-notes::003"],
+    "expected_citation_ids": ["project-notes::003"],
+    "expect_unanswered": false
+  },
+  {
+    "id": "eval-004",
+    "query": "what is evaluation harness",
+    "expected_chunk_ids": ["project-notes::004"],
+    "expected_citation_ids": ["project-notes::004"],
+    "expect_unanswered": false
+  },
+  {
+    "id": "eval-005",
+    "query": "what is the capital of France",
+    "expected_chunk_ids": [],
+    "expected_citation_ids": [],
+    "expect_unanswered": true
+  }
+]
