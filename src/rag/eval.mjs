@@ -1,21 +1,21 @@
 // src/rag/eval.mjs
 //
-// WriCoRe Step 5 — Simple Evaluation Harness
+// WriCoRe Step 6–9 Evaluation Harness v0.2
 //
 // What this checks:
 // 1. Retrieval correctness:
-//    Did expected chunk_ids appear in retrieved chunks?
+//    Did expected chunk_ids appear in top retrieved chunks?
 //
 // 2. Answer correctness:
-//    Did answer-with-context return validation.valid === true?
-//    Did the final answer cite the expected chunk_ids?
-//    Did unanswered behavior match expectation?
+//    Did answer-with-context produce:
+//    - correct unanswered behavior
+//    - valid citations
+//    - expected citation IDs
 //
-// Beginner-safe:
-// - No frameworks
-// - No vector DB
-// - Uses eval-data.json
-// - Uses existing retrieve.mjs and answer-with-context.mjs
+// 3. Simple metrics:
+//    - retrieval pass rate
+//    - answer pass rate
+//    - overall pass rate
 //
 // Run:
 // node src/rag/eval.mjs
@@ -29,6 +29,11 @@ const TOP_K = 5;
 
 function unique(values) {
   return [...new Set(values)];
+}
+
+function percent(numerator, denominator) {
+  if (denominator === 0) return 0;
+  return Math.round((numerator / denominator) * 100);
 }
 
 function extractInlineCitations(answerMarkdown) {
@@ -53,16 +58,6 @@ function containsAll(actualIds, expectedIds) {
   return expectedIds.every(id => actualIds.includes(id));
 }
 
-function arraysEqualAsSets(a, b) {
-  const aa = unique(a).sort();
-  const bb = unique(b).sort();
-
-  return (
-    aa.length === bb.length &&
-    aa.every((value, index) => value === bb[index])
-  );
-}
-
 async function loadEvalData() {
   const raw = await fs.readFile(EVAL_DATA_PATH, "utf8");
   return JSON.parse(raw);
@@ -71,14 +66,16 @@ async function loadEvalData() {
 function evaluateRetrieval(testCase, retrievedChunks) {
   const retrievedIds = retrievedChunks.map(c => c.chunk_id);
   const expectedIds = testCase.expected_chunk_ids || [];
+  const expectUnanswered = Boolean(testCase.expect_unanswered);
 
-  // For answerable questions, expected chunks must appear.
-  // For unanswerable questions, we do not require zero retrieval yet because
-  // lexical retrieval may still find partial keyword matches.
-  const retrievalPass =
-    expectedIds.length === 0
-      ? true
-      : containsAll(retrievedIds, expectedIds);
+  let retrievalPass;
+
+  if (expectUnanswered && expectedIds.length === 0) {
+    // For unanswerable questions, good retrieval means no chunks retrieved.
+    retrievalPass = retrievedIds.length === 0;
+  } else {
+    retrievalPass = containsAll(retrievedIds, expectedIds);
+  }
 
   return {
     pass: retrievalPass,
@@ -93,6 +90,7 @@ function evaluateAnswer(testCase, answerResult) {
 
   const inlineCitationIds = extractInlineCitations(answerResult.answer_markdown);
   const structuredCitationIds = getStructuredCitationIds(answerResult.citations);
+
   const allCitationIds = unique([
     ...inlineCitationIds,
     ...structuredCitationIds
@@ -101,17 +99,20 @@ function evaluateAnswer(testCase, answerResult) {
   const unansweredMatches =
     Boolean(answerResult.unanswered) === expectUnanswered;
 
-  const validationPass = Boolean(answerResult.validation?.valid);
+  const validationValid = Boolean(answerResult.validation?.valid);
 
-  const citationPass =
-    expectedCitationIds.length === 0
-      ? allCitationIds.length === 0
-      : containsAll(allCitationIds, expectedCitationIds);
+  let citationPass;
+
+  if (expectUnanswered) {
+    citationPass = allCitationIds.length === 0;
+  } else {
+    citationPass = containsAll(allCitationIds, expectedCitationIds);
+  }
 
   const answerPass =
     unansweredMatches &&
-    (expectUnanswered ? true : validationPass) &&
-    citationPass;
+    citationPass &&
+    (expectUnanswered ? true : validationValid);
 
   return {
     pass: answerPass,
@@ -119,8 +120,8 @@ function evaluateAnswer(testCase, answerResult) {
     actual_citation_ids: allCitationIds,
     unanswered_expected: expectUnanswered,
     unanswered_actual: Boolean(answerResult.unanswered),
-    validation_valid: validationPass,
-    answer_preview: (answerResult.answer_markdown || "").slice(0, 220)
+    validation_valid: validationValid,
+    answer_preview: (answerResult.answer_markdown || "").slice(0, 260)
   };
 }
 
@@ -131,12 +132,10 @@ async function runOne(testCase) {
   const retrieval = evaluateRetrieval(testCase, retrievedChunks);
   const answer = evaluateAnswer(testCase, answerResult);
 
-  const overallPass = retrieval.pass && answer.pass;
-
   return {
     id: testCase.id,
     query: testCase.query,
-    pass: overallPass,
+    pass: retrieval.pass && answer.pass,
     retrieval,
     answer
   };
@@ -170,11 +169,10 @@ function printResult(result) {
 }
 
 async function main() {
-  console.log("WriCoRe RAG Evaluation Harness");
-  console.log("================================");
+  console.log("WriCoRe RAG Evaluation Harness v0.2");
+  console.log("===================================");
 
   const testCases = await loadEvalData();
-
   const results = [];
 
   for (const testCase of testCases) {
@@ -183,12 +181,17 @@ async function main() {
     printResult(result);
   }
 
-  const passed = results.filter(r => r.pass).length;
   const total = results.length;
+
+  const passed = results.filter(r => r.pass).length;
   const failed = total - passed;
 
   const retrievalPassed = results.filter(r => r.retrieval.pass).length;
   const answerPassed = results.filter(r => r.answer.pass).length;
+
+  const retrievalPassRate = percent(retrievalPassed, total);
+  const answerPassRate = percent(answerPassed, total);
+  const overallPassRate = percent(passed, total);
 
   console.log("");
   console.log("Summary");
@@ -196,11 +199,10 @@ async function main() {
   console.log(`Total tests: ${total}`);
   console.log(`Passed: ${passed}`);
   console.log(`Failed: ${failed}`);
-  console.log(`Retrieval passed: ${retrievalPassed}/${total}`);
-  console.log(`Answer passed: ${answerPassed}/${total}`);
-  console.log(`Overall pass rate: ${Math.round((passed / total) * 100)}%`);
+  console.log(`Retrieval passed: ${retrievalPassed}/${total} (${retrievalPassRate}%)`);
+  console.log(`Answer passed: ${answerPassed}/${total} (${answerPassRate}%)`);
+  console.log(`Overall pass rate: ${overallPassRate}%`);
 
-  // Write machine-readable report.
   const report = {
     generated_at: new Date().toISOString(),
     total,
@@ -208,7 +210,9 @@ async function main() {
     failed,
     retrieval_passed: retrievalPassed,
     answer_passed: answerPassed,
-    overall_pass_rate: passed / total,
+    retrieval_pass_rate: retrievalPassRate,
+    answer_pass_rate: answerPassRate,
+    overall_pass_rate: overallPassRate,
     results
   };
 
@@ -221,6 +225,8 @@ async function main() {
   console.log("Wrote eval-report.json");
 
   if (failed > 0) {
+    console.log("");
+    console.log("Note: Some failures are useful. They show what retrieval or prompting should improve next.");
     process.exitCode = 1;
   }
 }
