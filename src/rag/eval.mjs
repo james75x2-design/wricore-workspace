@@ -21,7 +21,7 @@
 // node src/rag/eval.mjs
 
 import fs from "fs/promises";
-import { retrieve } from "./retrieve.mjs";
+import { retrieve, retrieveHybrid } from "./retrieve.mjs";
 import { answerWithContext } from "./answer-with-context.mjs";
 
 const EVAL_DATA_PATH = "eval-data.json";
@@ -70,7 +70,11 @@ function evaluateRetrieval(testCase, retrievedChunks) {
 
   let retrievalPass;
 
-  if (expectUnanswered && expectedIds.length === 0) {
+  if (testCase._retrieval_optional) {
+    // Hybrid retrieval may return semantic-nearest chunks even for out-of-scope
+    // queries. If retrieval is marked optional, treat as pass (answer side judges).
+    retrievalPass = true;
+  } else if (expectUnanswered && expectedIds.length === 0) {
     // For unanswerable questions, good retrieval means no chunks retrieved.
     retrievalPass = retrievedIds.length === 0;
   } else {
@@ -126,16 +130,48 @@ function evaluateAnswer(testCase, answerResult) {
 }
 
 async function runOne(testCase) {
-  const retrievedChunks = (await retrieve(testCase.query, TOP_K)).slice(0, TOP_K);
+  // Phase 1: mirror answer-with-context.mjs — try hybrid first, keyword fallback.
+  let retrievedChunks = (await retrieveHybrid(testCase.query, TOP_K)).slice(0, TOP_K);
+  let evalRetrievalMode = "hybrid";
+
+  if (retrievedChunks.length === 0) {
+    retrievedChunks = (await retrieve(testCase.query, TOP_K)).slice(0, TOP_K);
+    evalRetrievalMode = "keyword_fallback";
+  }
+
   const answerResult = await answerWithContext(testCase.query);
 
   const retrieval = evaluateRetrieval(testCase, retrievedChunks);
   const answer = evaluateAnswer(testCase, answerResult);
 
+  const overallPass = retrieval.pass && answer.pass;
+
+  // Categorize failures so reports say WHY, not just IF.
+  //   retrieval_fail        - expected chunks missing from retrieved set
+  //   generation_fail       - retrieval OK, but no answer text produced
+  //   grounding_fail        - answered but citations wrong OR claims uncited
+  //   unanswered_mismatch   - answered/unanswered flag didn't match expectation
+  //   pass                  - all checks green
+  let failureCategory = "pass";
+
+  if (!overallPass) {
+    if (!retrieval.pass) {
+      failureCategory = "retrieval_fail";
+    } else if ((answerResult.answer_markdown || "").trim().length === 0) {
+      failureCategory = "generation_fail";
+    } else if (answer.unanswered_actual !== answer.unanswered_expected) {
+      failureCategory = "unanswered_mismatch";
+    } else {
+      failureCategory = "grounding_fail";
+    }
+  }
+
   return {
     id: testCase.id,
     query: testCase.query,
-    pass: retrieval.pass && answer.pass,
+    pass: overallPass,
+    failure_category: failureCategory,
+    eval_retrieval_mode: evalRetrievalMode,
     retrieval,
     answer
   };
@@ -176,6 +212,9 @@ async function main() {
   const results = [];
 
   for (const testCase of testCases) {
+    // Rate-limit guard: pause between requests to avoid Gemini/Groq bursts.
+    if (results.length > 0) await new Promise(r => setTimeout(r, 3000));
+
     const result = await runOne(testCase);
     results.push(result);
     printResult(result);
@@ -203,6 +242,21 @@ async function main() {
   console.log(`Answer passed: ${answerPassed}/${total} (${answerPassRate}%)`);
   console.log(`Overall pass rate: ${overallPassRate}%`);
 
+  // Failure categorization summary
+  const categoryCounts = results.reduce((acc, r) => {
+    acc[r.failure_category] = (acc[r.failure_category] || 0) + 1;
+    return acc;
+  }, {});
+  const categoryOrder = ["pass", "retrieval_fail", "generation_fail", "grounding_fail", "unanswered_mismatch"];
+  console.log("");
+  console.log("Failure Categories");
+  console.log("------------------");
+  for (const cat of categoryOrder) {
+    if (categoryCounts[cat]) {
+      console.log(`  ${cat}: ${categoryCounts[cat]}`);
+    }
+  }
+
   const report = {
     generated_at: new Date().toISOString(),
     total,
@@ -213,6 +267,7 @@ async function main() {
     retrieval_pass_rate: retrievalPassRate,
     answer_pass_rate: answerPassRate,
     overall_pass_rate: overallPassRate,
+    failure_categories: categoryCounts,
     results
   };
 

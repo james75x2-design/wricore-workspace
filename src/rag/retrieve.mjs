@@ -196,17 +196,142 @@ export async function retrieve(query, topK = DEFAULT_TOP_K, options = {}) {
   return dedupeResults(scored).slice(0, topK);
 }
 
+// ─── Hybrid Retrieval (v0.3 — keyword + vector fusion) ──────────────────────
+// Added Phase 1: computes cosine similarity between query embedding and
+// pre-computed chunk embeddings, then fuses with keyword score.
+
+const EMBEDDED_CHUNKS_PATH = "data/index/chunks-embedded.jsonl";
+const EMBEDDING_MODEL = "@cf/baai/bge-small-en-v1.5";
+const RAG_KEYWORD_WEIGHT = 0.5;
+const RAG_VECTOR_WEIGHT = 0.5;
+const VECTOR_THRESHOLD = 0.3;
+
+const ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
+const API_TOKEN =
+  process.env.CLOUDFLARE_API_TOKEN_WRICORE ||
+  process.env.CLOUDFLARE_API_TOKEN;
+
+async function loadEmbeddedChunks() {
+  const raw = await fs.readFile(EMBEDDED_CHUNKS_PATH, "utf8");
+  return raw.split("\n").filter(Boolean).map(line => JSON.parse(line));
+}
+
+async function embedQuery(query) {
+  if (!ACCOUNT_ID || !API_TOKEN) return null;
+  try {
+    const url = `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/ai/run/${EMBEDDING_MODEL}`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${API_TOKEN}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ text: [query] })
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data?.result?.data?.[0] || null;
+  } catch (err) {
+    return null;
+  }
+}
+
+function cosineSimilarity(a, b) {
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return 0;
+  let dot = 0, normA = 0, normB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+  const denom = Math.sqrt(normA) * Math.sqrt(normB);
+  return denom === 0 ? 0 : dot / denom;
+}
+
+function normalizeScores(items, scoreKey) {
+  const scores = items.map(x => x[scoreKey]);
+  const max = Math.max(...scores, 0);
+  if (max === 0) {
+    return items.map(x => ({ ...x, [`${scoreKey}_norm`]: 0 }));
+  }
+  return items.map(x => ({ ...x, [`${scoreKey}_norm`]: x[scoreKey] / max }));
+}
+
+export async function retrieveHybrid(query, topK = DEFAULT_TOP_K, options = {}) {
+  const minScore =
+    typeof options.minScore === "number" ? options.minScore : 0;
+
+  const chunks = await loadEmbeddedChunks();
+
+  // Signal 1 — keyword scoring (reuses existing scoreChunk logic)
+  const scored = chunks.map(chunk => {
+    const text = cleanText(chunk.text);
+    return {
+      chunk_id: chunk.chunk_id,
+      section: chunk.section,
+      source_path: chunk.source_path,
+      source: chunk.source_path,
+      text,
+      embedding: chunk.embedding,
+      keyword_score: scoreChunk(query, chunk),
+      vector_score: 0,
+      preview: text
+        .replace(/[#*`]/g, "")
+        .replace(/\s+/g, " ")
+        .slice(0, 220)
+    };
+  });
+
+  // Signal 2 — vector similarity
+  const queryEmbedding = await embedQuery(query);
+  if (queryEmbedding) {
+    for (const c of scored) {
+      c.vector_score = cosineSimilarity(queryEmbedding, c.embedding);
+    }
+  }
+
+  // Filter: keep chunks with keyword hits OR meaningful vector similarity
+  let candidates = scored.filter(c =>
+    c.keyword_score > 0 || c.vector_score >= VECTOR_THRESHOLD
+  );
+  if (candidates.length === 0) return [];
+
+  // Normalize per signal, then fuse with weighted sum
+  candidates = normalizeScores(candidates, "keyword_score");
+  candidates = normalizeScores(candidates, "vector_score");
+
+  const fused = candidates.map(c => ({
+    ...c,
+    score: Number(
+      (RAG_KEYWORD_WEIGHT * c.keyword_score_norm +
+       RAG_VECTOR_WEIGHT * c.vector_score_norm).toFixed(4)
+    ),
+    retrieval_signal: queryEmbedding ? "hybrid" : "keyword_only"
+  }));
+
+  return dedupeResults(
+    fused
+      .filter(c => c.score >= minScore)
+      .sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return a.text.length - b.text.length;
+      })
+  ).slice(0, topK);
+}
+
 // CLI usage:
 // node src/rag/retrieve.mjs "what is context harness"
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const query = process.argv.slice(2).join(" ");
+  const args = process.argv.slice(2);
+  const useHybrid = args.includes("--hybrid");
+  const query = args.filter(a => a !== "--hybrid").join(" ");
 
   if (!query) {
     console.log(
       JSON.stringify(
         {
           error: "Please provide a query.",
-          example: 'node src/rag/retrieve.mjs "what is context harness"'
+          example: 'node src/rag/retrieve.mjs "what is context harness" [--hybrid]'
         },
         null,
         2
@@ -215,9 +340,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     process.exit(1);
   }
 
-  const results = await retrieve(query, DEFAULT_TOP_K);
+  const results = useHybrid
+    ? await retrieveHybrid(query, DEFAULT_TOP_K)
+    : await retrieve(query, DEFAULT_TOP_K);
 
-  const display = results.map(({ text, ...rest }) => rest);
+  const display = results.map(({ text, embedding, ...rest }) => rest);
 
-  console.log(JSON.stringify(display, null, 2));
+  console.log(JSON.stringify({ mode: useHybrid ? "hybrid" : "keyword", results: display }, null, 2));
 }

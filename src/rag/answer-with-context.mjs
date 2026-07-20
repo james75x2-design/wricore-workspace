@@ -19,7 +19,7 @@
 // - Gemini/Groq API keys stay inside Cloudflare Worker secrets.
 // - This file assumes retrieve.mjs exports retrieve(query, topK).
 
-import { retrieve } from "./retrieve.mjs";
+import { retrieve, retrieveHybrid } from "./retrieve.mjs";
 
 const WRICORE_WORKER_URL = "https://wricore.james75x2.workers.dev/";
 const TOP_K = 5;
@@ -374,7 +374,16 @@ function validateAnswer(answerObj, chunks) {
 }
 
 export async function answerWithContext(query) {
-  const rawRetrievedChunks = await retrieve(query, TOP_K);
+  // Phase 1: prefer hybrid retrieval (keyword + vector fusion).
+  // Falls back to keyword-only retrieval if hybrid returns nothing
+  // (e.g. embedding API unavailable or all candidates filtered out).
+  let rawRetrievedChunks = await retrieveHybrid(query, TOP_K);
+  let retrievalMode = "hybrid";
+
+  if (rawRetrievedChunks.length === 0) {
+    rawRetrievedChunks = await retrieve(query, TOP_K);
+    retrievalMode = "keyword_fallback";
+  }
 
   const retrievedChunks = rawRetrievedChunks
     .filter(c => c.text && cleanText(c.text).length > 0)
@@ -434,6 +443,7 @@ export async function answerWithContext(query) {
       typeof answerObj.unanswered === "boolean" ? answerObj.unanswered : true,
     validation,
     debug: {
+      retrieval_mode: retrievalMode,
       retrieved_count: rawRetrievedChunks.length,
       chunks_after_text_filter: retrievedChunks.length,
       chunks_used_count: selectedChunks.length,
