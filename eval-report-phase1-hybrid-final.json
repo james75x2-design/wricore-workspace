@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-21T01:07:07.496Z",
+  "generated_at": "2026-07-20T23:31:35.002Z",
   "total": 10,
   "passed": 10,
   "failed": 0,
@@ -211,7 +211,7 @@
         "unanswered_expected": false,
         "unanswered_actual": false,
         "validation_valid": true,
-        "answer_preview": "The WriCoRe agent used for research is the **Research Agent** [wricore-readme::002], also referred to as the **ANALYST-BOT v3.1** [wricore-readme::006]."
+        "answer_preview": "The WriCoRe agent used for research is the **Research Agent** [wricore-readme::002], also known as the **ANALYST-BOT v3.1** [wricore-readme::006], which is empowered with factual grounding to synthesize deep, logical reports [wricore-readme::006]."
       }
     },
     {
@@ -245,7 +245,7 @@
         "unanswered_expected": false,
         "unanswered_actual": false,
         "validation_valid": true,
-        "answer_preview": "WriCoRe handles fallback by automatically retrying with Groq if Gemini fails for any reason, such as rate limit, safety block, timeout, missing key, network error, or empty response [wricore-readme::008]. The Worker falls back from Gemini to Groq on specific c"
+        "answer_preview": "WriCoRe handles fallback by automatically retrying with Groq if Gemini fails for any reason, such as rate limit, safety block, timeout, missing key, network error, or empty response [wricore-readme::008]. The fallback trigger conditions include non-2xx HTTP st"
       }
     },
     {
