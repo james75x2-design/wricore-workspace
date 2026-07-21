@@ -141,6 +141,16 @@ async function runOne(testCase) {
 
   const answerResult = await answerWithContext(testCase.query);
 
+  // Phase 4 Component 3: extract pipeline signals from answer-with-context debug.
+  // When Worker mode:rag is used, we get retrieval_signal + ranking_signal + worker_version.
+  const debug = answerResult.debug || {};
+  const pipeline = debug.pipeline || "local_hybrid";
+  const retrievalSignalUsed = debug.retrieval_signal || "unknown";
+  const rankingSignalUsed = debug.ranking_signal || "n/a";
+  const workerVersion = debug.worker_version || null;
+  const workerModel = debug.worker_model || null;
+  const workerLatencyMs = debug.latency_ms ?? null;
+
   const retrieval = evaluateRetrieval(testCase, retrievedChunks);
   const answer = evaluateAnswer(testCase, answerResult);
 
@@ -172,6 +182,12 @@ async function runOne(testCase) {
     pass: overallPass,
     failure_category: failureCategory,
     eval_retrieval_mode: evalRetrievalMode,
+    pipeline,
+    retrieval_signal: retrievalSignalUsed,
+    ranking_signal: rankingSignalUsed,
+    worker_version: workerVersion,
+    worker_model: workerModel,
+    worker_latency_ms: workerLatencyMs,
     retrieval,
     answer
   };
@@ -257,6 +273,43 @@ async function main() {
     }
   }
 
+  // Phase 4 Component 3: pipeline usage summary (worker_rag vs local_hybrid).
+  const pipelineCounts = results.reduce((acc, r) => {
+    const key = r.pipeline || "unknown";
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+  console.log("");
+  console.log("Pipelines Used");
+  console.log("--------------");
+  for (const [pipeline, count] of Object.entries(pipelineCounts)) {
+    console.log(`  ${pipeline}: ${count}`);
+  }
+
+  // Retrieval + ranking signal breakdowns when Worker mode:rag was used.
+  const retrievalSignalCounts = results.reduce((acc, r) => {
+    const key = r.retrieval_signal || "unknown";
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+  const rankingSignalCounts = results.reduce((acc, r) => {
+    const key = r.ranking_signal || "n/a";
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+  console.log("");
+  console.log("Retrieval Signals");
+  console.log("-----------------");
+  for (const [sig, count] of Object.entries(retrievalSignalCounts)) {
+    console.log(`  ${sig}: ${count}`);
+  }
+  console.log("");
+  console.log("Ranking Signals");
+  console.log("---------------");
+  for (const [sig, count] of Object.entries(rankingSignalCounts)) {
+    console.log(`  ${sig}: ${count}`);
+  }
+
   const report = {
     generated_at: new Date().toISOString(),
     total,
@@ -268,6 +321,9 @@ async function main() {
     answer_pass_rate: answerPassRate,
     overall_pass_rate: overallPassRate,
     failure_categories: categoryCounts,
+    pipelines_used: pipelineCounts,
+    retrieval_signals: retrievalSignalCounts,
+    ranking_signals: rankingSignalCounts,
     results
   };
 

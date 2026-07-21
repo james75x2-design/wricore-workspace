@@ -373,7 +373,87 @@ function validateAnswer(answerObj, chunks) {
   };
 }
 
+// ─── Phase 4 Component 2 — Worker mode:rag path ─────────────────────────────
+// When USE_WORKER_RAG is true (default), answerWithContext prefers to call the
+// Worker's mode:rag endpoint so eval and production exercise the same code path
+// (hybrid retrieval + reranker + citation enforcement all done server-side).
+//
+// Set USE_WORKER_RAG=false in the environment to force the legacy local path
+// (local hybrid retrieval + Worker chat mode). Useful for A/B testing.
+
+const USE_WORKER_RAG = process.env.USE_WORKER_RAG !== "false";
+
+async function answerViaWorkerRag(query) {
+  const response = await fetch(WRICORE_WORKER_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      mode: "rag",
+      messages: [{ role: "user", content: query }]
+    })
+  });
+
+  if (!response.ok) {
+    const errText = await response.text().catch(() => "");
+    throw new Error(`Worker returned ${response.status}: ${errText.slice(0, 200)}`);
+  }
+
+  const data = await response.json();
+  if (typeof data.answer_markdown !== "string") {
+    throw new Error("Worker response missing answer_markdown");
+  }
+  return data;
+}
+
 export async function answerWithContext(query) {
+  // ─── Phase 4 Component 2 — Try Worker mode:rag first (production-parity) ───
+  // Falls through to local hybrid path on any error so eval remains resilient.
+  if (USE_WORKER_RAG) {
+    try {
+      const data = await answerViaWorkerRag(query);
+      const chunksUsed = Array.isArray(data.meta?.chunks_used)
+        ? data.meta.chunks_used
+        : [];
+      const rankingSignal = chunksUsed[0]?.rerank_score != null
+        ? "reranker"
+        : "hybrid_fusion";
+      const retrievalSignal =
+        chunksUsed[0]?.retrieval_signal ||
+        (chunksUsed.some(c => c.vector_score > 0) ? "hybrid" : "keyword_only");
+
+      return {
+        query,
+        answer_markdown: data.answer_markdown || "",
+        citations: Array.isArray(data.citations) ? data.citations : [],
+        unanswered: Boolean(data.unanswered),
+        validation: {
+          valid: true,
+          checks: {
+            via_worker_rag: true,
+            has_required_shape: true,
+            citation_enforcement_delegated_to_worker: true
+          }
+        },
+        debug: {
+          pipeline: "worker_rag",
+          worker_version: data.meta?.version,
+          worker_model: data.meta?.model,
+          worker_mode: data.meta?.mode,
+          latency_ms: data.meta?.latency_ms,
+          retrieval_signal: retrievalSignal,
+          ranking_signal: rankingSignal,
+          chunks_used: chunksUsed,
+          chunks_used_count: chunksUsed.length
+        }
+      };
+    } catch (err) {
+      console.warn(
+        `[answer-with-context] Worker mode:rag failed, falling back to local hybrid pipeline: ${err.message}`
+      );
+      // Fall through to local hybrid path below.
+    }
+  }
+
   // Phase 1: prefer hybrid retrieval (keyword + vector fusion).
   // Falls back to keyword-only retrieval if hybrid returns nothing
   // (e.g. embedding API unavailable or all candidates filtered out).
