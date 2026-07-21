@@ -6,6 +6,7 @@
 ![Worker](https://img.shields.io/badge/worker-v3.3.0-blue)
 ![RAG](https://img.shields.io/badge/RAG-hybrid%20+%20reranker-brightgreen)
 ![Eval](https://img.shields.io/badge/eval-100%25%20pass-brightgreen)
+![Parity](https://img.shields.io/badge/eval%20parity-worker%20mode%3Arag-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Backend](https://img.shields.io/badge/backend-Cloudflare%20Workers-orange)
 ![Engine](https://img.shields.io/badge/AI-Gemini%20%2B%20Groq-purple)
@@ -107,20 +108,25 @@ UI renders:  Clean prose (inline [chunk_id] markers stripped)
 - **Cross-encoder reranker** — refines top-20 hybrid candidates to top-5 for the LLM
 - **Citation enforcement** — hallucinated chunk IDs are filtered against the retrieved set before response
 - **Graceful fallbacks** — vector → keyword-only, reranker → hybrid fusion, if either AI call fails
+- **Eval-to-production parity** *(v3.3.0 Phase 4)* — both local eval and production users exercise the same Worker `mode:rag` code path; regressions surface immediately in eval reports
 - **Structured logs** tag `retrieval_signal` (`hybrid` | `keyword_only`) and `ranking_signal` (`reranker` | `hybrid_fusion`)
 - **Failure categorization** — eval reports classify each failure (`retrieval_fail` | `generation_fail` | `grounding_fail` | `unanswered_mismatch`)
+- **Pipeline telemetry** — eval reports now include `pipelines_used`, `retrieval_signals`, `ranking_signals` breakdowns
 
 ### Evaluation
 
 **100% pass rate** on the local eval harness (10 test cases including prompt injection, out-of-scope refusal, and semantic queries):
 
-| Metric | Pre-Phase 1 | After Phase 1-3 | Delta |
+| Metric | Pre-Phase 1 | After Phase 1-3 | After Phase 4 (Worker parity) |
 |---|---|---|---|
-| Total tests | 10 | 10 | — |
-| Passed | 7 | **10** | **+3** |
-| Retrieval passed | 9 | 10 | +1 |
-| Answer passed | 8 | 10 | +2 |
-| Overall pass rate | 70% | **100%** | **+30pp** |
+| Total tests | 10 | 10 | 10 |
+| Passed | 7 | **10** | **10** |
+| Retrieval passed | 9 | 10 | 10 |
+| Answer passed | 8 | 10 | 10 |
+| Overall pass rate | 70% | **100%** | **100%** |
+| Pipelines exercised | local_hybrid | local_hybrid | **worker_rag** ← production path |
+| Retrieval signals verified | n/a | n/a | **hybrid: 10** |
+| Ranking signals verified | n/a | n/a | **reranker: 10** |
 
 Run the eval harness yourself:
 
@@ -128,7 +134,29 @@ Run the eval harness yourself:
 node src/rag/eval.mjs
 ```
 
-Reports archived in `eval-report-pre-phase1-baseline.json`, `eval-report-phase1-hybrid-final.json`, and `eval-report-phase23-final.json`.
+Eval report includes new sections showing which code path each test exercised:
+
+```
+Pipelines Used
+--------------
+  worker_rag: 10
+
+Retrieval Signals
+-----------------
+  hybrid: 10
+
+Ranking Signals
+---------------
+  reranker: 10
+```
+
+Reports archived in `eval-report-pre-phase1-baseline.json`, `eval-report-phase1-hybrid-final.json`, `eval-report-phase23-final.json`, and `eval-report-phase4-worker-rag.json`.
+
+**Force local hybrid path** (for A/B testing or when the Worker is down):
+
+```bash
+USE_WORKER_RAG=false node src/rag/eval.mjs
+```
 
 ---
 
@@ -154,6 +182,15 @@ Reports archived in `eval-report-pre-phase1-baseline.json`, `eval-report-phase1-
 5. Citation-enforced prompt sent to Gemini (with Groq fallback).
 6. Response normalized into `{ answer_markdown, citations, chunks_used }`.
 7. UI strips inline `[chunk_id]` markers from prose, renders Sources strip below.
+
+**Data flow (Eval harness — mirrors production path)**
+
+1. `eval.mjs` iterates test cases from `eval-data.json`.
+2. Each test calls `answerWithContext(query)` — same entry point production uses.
+3. `answerWithContext` sends `{ mode: "rag", messages: [...] }` to Worker.
+4. Worker returns citation-enforced response with retrieval + ranking signals.
+5. Eval extracts `pipeline`, `retrieval_signal`, `ranking_signal` from response.
+6. Report captures pass/fail + failure category + which code path each test exercised.
 
 ---
 
@@ -187,6 +224,7 @@ The Worker falls back from Gemini to Groq on:
 - Three specialized AI agents — Writing, Coding, Research
 - **Grounded RAG mode on Research Agent (v3.3.0)** — hybrid retrieval + reranker + citations
 - **Sources strip** — green chunk pills below RAG answers for verification
+- **Eval-to-production parity (v3.3.0 Phase 4)** — eval harness exercises the same Worker `mode:rag` code path production users hit
 - Dual-engine backend — Gemini primary, Groq fallback, fully automatic
 - Live engine indicator — shows which AI model handled each response
 - Purpose-built system prompts — no generic chatbot vagueness
@@ -314,7 +352,7 @@ Success response (200):
 | Provider errors | Sanitized before returning to client — raw API errors never forwarded |
 | Payload limits | Max 30 messages, max 8000 chars per message |
 | **RAG citation enforcement** | Hallucinated chunk IDs filtered against retrieved set before response |
-| **Prompt injection defense** | RAG prompt explicitly forbids inventing sources; verified via eval `vf-eval-008` |
+| **Prompt injection defense** | RAG prompt explicitly forbids inventing sources; verified via eval `eval-008` |
 
 ---
 
@@ -341,10 +379,10 @@ Success response (200):
 - Structured JSON logging — severity-aware for Cloudflare log search, tagged with `retrieval_signal` + `ranking_signal`
 - Graceful fallback ladder: vector → keyword-only, reranker → hybrid fusion
 
-**Local RAG pipeline (dev/eval only)**
+**Local RAG pipeline (dev/eval)**
 - `src/rag/retrieve.mjs` — keyword-scored + hybrid retriever with stopwords, section boosts, phrase boosts
-- `src/rag/answer-with-context.mjs` — Worker-integrated grounded answer pipeline with validation
-- `src/rag/eval.mjs` — evaluation harness with failure categorization
+- `src/rag/answer-with-context.mjs` — production-parity: prefers Worker `mode:rag`, falls back to local hybrid on Worker error (`USE_WORKER_RAG=false` to force local)
+- `src/rag/eval.mjs` — evaluation harness with failure categorization + pipeline telemetry (`pipelines_used`, `retrieval_signals`, `ranking_signals`)
 - `scripts/embed-chunks.mjs` — batch-embeds KB chunks via Cloudflare AI
 - `scripts/build-worker-chunks.mjs` — regenerates `data/index/worker-chunks.js` for Worker
 
@@ -375,9 +413,9 @@ wricore-workspace/
 │       └── worker-chunks.js          # Chunks + embeddings inlined for Worker
 ├── src/rag/
 │   ├── retrieve.mjs                  # Local keyword + hybrid retriever
-│   ├── answer-with-context.mjs       # Local RAG answer pipeline
+│   ├── answer-with-context.mjs       # Worker mode:rag primary, local hybrid fallback
 │   ├── ingest-and-chunk.mjs          # KB ingestion
-│   └── eval.mjs                      # Eval harness with failure categorization
+│   └── eval.mjs                      # Eval harness with failure categorization + pipeline telemetry
 ├── scripts/
 │   ├── embed-chunks.mjs              # Batch-generate embeddings
 │   └── build-worker-chunks.mjs       # Rebuild worker-chunks.js
@@ -446,6 +484,13 @@ Also update `ALLOWED_ORIGINS` in the Worker if you fork this project to include 
 - Go to **Settings → Pages** → Source: `main` branch → Save
 - Your app will be live at `https://<your-username>.github.io/<repo-name>`
 
+**7. Run the eval harness**
+```bash
+node src/rag/eval.mjs
+```
+
+Exercises the Worker `mode:rag` code path — same one production users hit.
+
 ---
 
 ## 🗺️ Roadmap
@@ -456,9 +501,11 @@ Also update `ALLOWED_ORIGINS` in the Worker if you fork this project to include 
 - [x] **Production hybrid retrieval (Phase 2)** — Worker `mode:rag` branch with embedded 31 chunks
 - [x] **Cross-encoder reranker (Phase 3)** — `@cf/baai/bge-reranker-base` on top-20 hybrid candidates
 - [x] **UI mode toggle (Phase 4 Component 1)** — Chat vs Grounded RAG on Research Agent + Sources strip
+- [x] **Eval-to-production parity (Phase 4 Components 2+3)** — local pipeline + eval harness both exercise Worker `mode:rag` code path; report includes `pipelines_used`, `retrieval_signals`, `ranking_signals`
 - [x] Wrangler CLI deploy pipeline with `[ai]` binding
-- [ ] **Phase 4 Component 2** — Local `answer-with-context.mjs` calls Worker's `mode:rag` for eval-vs-production parity
-- [ ] **Phase 4 Component 3** — `eval.mjs` exercises Worker's `mode:rag` path for full end-to-end coverage
+- [ ] Agent-aware retrieval — per-agent `top_k` and KB scoping (Writing vs Coding vs Research)
+- [ ] Intent classifier — auto-route between Chat and Grounded RAG based on query intent
+- [ ] Observability + debug mode — `?debug=1` URL param surfaces retrieval + rerank scores in UI
 - [ ] Mobile-responsive layout improvements
 - [ ] Persistent conversation history across sessions
 - [ ] Additional agent personas (Data Agent, Design Agent)
@@ -512,7 +559,7 @@ MIT License — free to use, modify, and share with attribution. See `LICENSE` f
 
 | Version | Changes |
 |---------|---------|
-| **v3.3.0** | **Cross-encoder reranker** (`@cf/baai/bge-reranker-base`) refines top-20 hybrid candidates to top-5; `chunks_used` includes `rerank_score`; structured logs tag `ranking_signal`; graceful fallback to hybrid fusion if reranker fails |
+| **v3.3.0** (Phase 4 complete) | **Cross-encoder reranker** (`@cf/baai/bge-reranker-base`) refines top-20 hybrid candidates to top-5; `chunks_used` includes `rerank_score`; structured logs tag `ranking_signal`; graceful fallback to hybrid fusion if reranker fails. **UI mode toggle** on Research Agent with Sources strip. **Eval-to-production parity**: `answer-with-context.mjs` prefers Worker `mode:rag` (backward compatible with `USE_WORKER_RAG=false`); `eval.mjs` reports `pipelines_used`, `retrieval_signals`, `ranking_signals` — regressions in Worker retrieval/rerank surface immediately in eval reports |
 | **v3.2.0** | **Grounded RAG mode** (`mode: "rag"`) with 31 embedded knowledge base chunks; hybrid retrieval (keyword + vector cosine similarity via `@cf/baai/bge-small-en-v1.5`); citation enforcement filters hallucinated chunk IDs; structured logs tag `retrieval_signal`; Wrangler CLI deploy pipeline with `[ai]` binding |
 | **v3.1** | CORS allowlist, `/health` endpoint, structured JSON logging, 25s timeout protection via `AbortController`, payload validation (max 30 messages, max 8000 chars), version + latency metadata in every response, cleaner model queue |
 | v3.0 | Dual-engine backend (Gemini primary + Groq fallback via Cloudflare Worker), live engine indicator, CDN switched to jsdelivr, Babel classic runtime fix, `React.createElement` render fix |
@@ -527,6 +574,7 @@ MIT License — free to use, modify, and share with attribution. See `LICENSE` f
 | **Phase 2** — Worker `mode:rag` branch | 31 chunks embedded, hybrid retrieval, citation enforcement | Production RAG endpoint live |
 | **Phase 3** — Cross-encoder reranker | `@cf/baai/bge-reranker-base` refines candidates | Higher answer quality with rerank scores |
 | **Phase 4 Component 1** — UI mode toggle | Research Agent shows Chat / Grounded RAG toggle + Sources strip | End-users can trigger RAG mode |
+| **Phase 4 Components 2+3** — Eval parity | Local pipeline + eval both use Worker `mode:rag`; new pipeline/signal telemetry in reports | Regressions surface immediately in eval reports |
 
 ---
 
