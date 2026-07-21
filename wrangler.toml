@@ -1,0 +1,14 @@
+# WriCoRe Cloudflare Worker configuration
+# Docs: https://developers.cloudflare.com/workers/wrangler/configuration/
+
+name = "wricore"
+main = "cloudflare_worker_proxy.js"
+compatibility_date = "2026-07-20"
+account_id = "00f89c5e4e95e42ee317f541c7fcf49e"
+
+# Cloudflare Workers AI binding — Phase 2/3 hybrid retrieval + reranker
+[ai]
+binding = "AI"
+
+[observability]
+enabled = true
