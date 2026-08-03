@@ -214,6 +214,67 @@ Returns a grounded summary plus a `tool_calls` array showing the `web_search` ca
 
 ---
 
+## 🛠️ MCP Tool Loop
+
+WriCoRe runs a multi-round **MCP-style tool loop** (`src/mcp/tool-loop.mjs`) driven
+by a Cloudflare Worker (`mode: "mcp"`). The model selects and calls tools, the loop
+executes them, and results are fed back until the model produces a grounded final
+answer. Answers cite source URLs where a tool returns them.
+
+> **Note:** These are **real external tools** (live HTTP calls to Wikipedia and the
+> GitHub REST API), not a connection to a remote MCP *server*. A true remote
+> MCP-server client over JSON-RPC / Streamable HTTP is tracked as future work.
+
+### Available tools
+
+| Tool | Type | Backing service | What it does |
+|------|------|-----------------|--------------|
+| `calculator` | Deterministic | — (Workers-safe recursive-descent parser, no `eval`) | Evaluates arithmetic expressions (`+ - * / ( )`) |
+| `current_time` | Deterministic | — | Returns the current UTC date/time |
+| `web_search` | Real external | Wikipedia REST API (keyless) | Searches Wikipedia; returns titles, descriptions, excerpts, and article URLs |
+| `github_search` | Real external | GitHub REST API (auth-optional) | Searches public repos; returns full name, description, stars, language, and URL |
+
+Each external tool uses a descriptive `User-Agent`, an 8-second timeout, and graceful
+empty/error handling so a slow or failing upstream never hangs the loop.
+
+### Intent-based round-1 gating
+
+The first round forces the *right* tool based on the user's intent, then switches to
+`auto` so the model can use the result and finalize (`buildToolChoice` in
+`src/mcp/tools.mjs`):
+
+| Intent (round 1) | Forced tool |
+|------------------|-------------|
+| Arithmetic (operators / "calculate", "compute", …) | `calculator` |
+| Open-source / repo / package / library | `github_search` |
+| Factual / "who/what/when/where" / "explain" | `web_search` |
+| Ambiguous | `auto` (model decides) |
+
+This replaced a blunt "force every round" approach that caused redundant re-calls
+(e.g. the calculator firing 5× for one expression). With gating, a math query drops
+from ~5 tool calls across 6 rounds (~2000 ms) to **1 call across 2 rounds (~700 ms)**.
+
+### Dedupe guard
+
+The loop caches tool results by **name + arguments** within a single run. If the model
+requests a call whose name and args exactly match one already executed this loop, the
+guard **reuses the cached result** instead of re-executing — avoiding redundant external
+I/O when the model self-refines on a round-2 `auto` turn. A tool message is still pushed
+for every `tool_call_id`, so the transcript stays valid, and each call is tagged with a
+`deduped` flag (plus a `tool_call_deduped` telemetry event).
+
+Importantly, the guard only suppresses *identical* calls — a **refined** search with
+different arguments still executes normally, since it's genuinely new work rather than
+redundant work.
+
+**Observed behavior (live):**
+
+| Scenario | `deduped` |
+|----------|-----------|
+| Single tool call | `[false]` |
+| Identical repeat (same args) | `[false, true]` — second reuses cache |
+| Refined repeat (different args) | `[false, false]` — both execute |
+
 ## 🏗️ Architecture
 
 <img src="https://raw.githubusercontent.com/james75x2-design/wricore-workspace/main/docs/screenshots/architecture.png" alt="WriCoRe Architecture Diagram — dual-engine AI workspace with Gemini primary and Groq fallback">
