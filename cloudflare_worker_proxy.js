@@ -446,7 +446,10 @@ async function handleMcpMode({ messages, env, temperature, corsHeaders, startTim
       maxRounds: MCP_MAX_ROUNDS,
       logEvent,
       callModel: async (working, tools, { round, maxRounds }) => {
-        const force = round < maxRounds;
+        // Force a tool call only on the FIRST round, then let the model use the
+        // result and finalize. Forcing every round made it re-call redundantly
+        // (e.g. calculator fired 5x for the same expression). Phase 5c fix.
+        const force = round === 1;
         const openaiMessages = messagesForOpenAI(working, MCP_SYSTEM_PROMPT);
         const { data, usedModel: m } = await callOpenAICompatOnce({
           openaiMessages, tools, forceTools: force, env, temperature
