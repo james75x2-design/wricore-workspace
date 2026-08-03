@@ -15,6 +15,10 @@ export async function runToolLoop({
 }) {
   const working = [...messages];
   const toolCalls = [];
+  // Dedupe guard: cache results by name+args so an identical tool call
+  // later in THIS loop reuses the result instead of re-executing (avoids
+  // redundant external I/O when the model self-refines on a round-2 auto turn).
+  const dedupeCache = new Map();
   let rounds = 0;
 
   while (rounds < maxRounds) {
@@ -31,20 +35,30 @@ export async function runToolLoop({
       working.push({ role: "assistant", tool_calls: turn.calls });
 
       for (const call of turn.calls) {
+        const cacheKey = call.name + "|" + JSON.stringify(call.args || {});
         let result;
-        try {
-          result = await executeTool(call.name, call.args, ctx);
-        } catch (err) {
-          result = { error: String(err && err.message ? err.message : err) };
+        let deduped = false;
+        if (dedupeCache.has(cacheKey)) {
+          // Identical call already executed this loop — reuse the result.
+          result = dedupeCache.get(cacheKey);
+          deduped = true;
+          logEvent("info", "tool_call_deduped", { name: call.name });
+        } else {
+          try {
+            result = await executeTool(call.name, call.args, ctx);
+          } catch (err) {
+            result = { error: String(err && err.message ? err.message : err) };
+          }
+          dedupeCache.set(cacheKey, result);
         }
-        toolCalls.push({ name: call.name, args: call.args, result });
+        toolCalls.push({ name: call.name, args: call.args, result, deduped });
         working.push({
           role: "tool",
           tool_call_id: call.id,
           name: call.name,
           content: JSON.stringify(result)
         });
-        logEvent("info", "tool_executed", { name: call.name });
+        if (!deduped) logEvent("info", "tool_executed", { name: call.name });
       }
       continue;
     }
