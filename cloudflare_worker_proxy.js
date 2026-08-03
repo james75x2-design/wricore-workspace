@@ -472,7 +472,7 @@ async function handleMcpMode({ messages, env, temperature, corsHeaders, startTim
       answer_markdown: result.finalText,
       mode: "mcp",
       model: usedModel,
-      tool_calls: result.toolCalls.map(t => ({ name: t.name, args: t.args, result: t.result })),
+      tool_calls: result.toolCalls.map(t => ({ name: t.name, args: t.args, result: t.result, deduped: t.deduped })),
       meta: {
         mode: "mcp",
         model: usedModel,
