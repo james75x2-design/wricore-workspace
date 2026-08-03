@@ -37,6 +37,18 @@ export const TOOL_DEFS = [
       properties: { query: { type: "string", description: "Search terms, e.g. 'Model Context Protocol'" } },
       required: ["query"]
     }
+  },
+  {
+    name: "github_search",
+    description:
+      "Search public GitHub repositories by keyword. Returns top repos with " +
+      "full name, description, star count, primary language, and URL. Use for " +
+      "questions about open-source projects, libraries, packages, SDKs, or frameworks.",
+    parameters: {
+      type: "object",
+      properties: { query: { type: "string", description: "GitHub keywords, e.g. 'cloudflare workers kv cache'. Do not include the word github." } },
+      required: ["query"]
+    }
   }
 ];
 
@@ -115,5 +127,86 @@ export async function executeTool(name, args, _ctx = {}) {
   if (name === "calculator") return safeCalculate(args && args.expression);
   if (name === "current_time") { const now = new Date(); return { iso_utc: now.toISOString(), unix_ms: now.getTime() }; }
   if (name === "web_search") return webSearch(args && args.query);
+  if (name === "github_search") return executeGithubSearch(args && args.query, _ctx && _ctx.env);
   throw new Error(`Unknown tool: ${name}`);
+}
+
+// ============================================================
+// GitHub second tool + intent-based round-1 gating
+// ============================================================
+
+
+// ---- (1) Executor: real GitHub REST call (auth-optional, rate-limit aware) ----
+export async function executeGithubSearch(query, env) {
+  const token = env && env.GITHUB_TOKEN ? env.GITHUB_TOKEN : null;
+  const url =
+    "https://api.github.com/search/repositories?q=" +
+    encodeURIComponent(query) +
+    "&sort=stars&order=desc&per_page=5";
+
+  const headers = {
+    Accept: "application/vnd.github+json",
+    "User-Agent": "WriCoRe-Agent (https://github.com/james75x2-design/wricore-workspace)",
+    "X-GitHub-Api-Version": "2022-11-28",
+  };
+  if (token) headers.Authorization = "Bearer " + token;
+
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res = await fetch(url, { headers, signal: controller.signal });
+    if (!res.ok) {
+      let body = "";
+      try { body = (await res.text()).slice(0, 200); } catch (_) {}
+      return {
+        ok: false,
+        error: `GitHub API ${res.status}${body ? ": " + body : ""}`,
+        results: [],
+      };
+    }
+    const data = await res.json();
+    const results = (data.items || []).slice(0, 5).map((r) => ({
+      name: r.full_name,
+      description: r.description || "",
+      stars: r.stargazers_count,
+      language: r.language || "n/a",
+      url: r.html_url,
+    }));
+    return { ok: true, results };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e.name === "AbortError" ? "GitHub search timeout (8s)" : e.message,
+      results: [],
+    };
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+// ---- (2) Intent-based tool selection for the round-1 forcing gate ----
+export function pickForcedTool(userText) {
+  const t = (userText || "").toLowerCase();
+
+  const mathOp = /[\d)]\s*[-+*/^]\s*[\d(]/.test(t);
+  const mathWord = /\b(calculate|compute|evaluate|sum of|product of|multiply|divide|square root|percent)\b/.test(t);
+  if (mathOp || mathWord) return "calculator";
+
+  if (/\b(github|repo|repository|open[- ]?source|npm|package|library|sdk|framework|boilerplate)\b/.test(t)) {
+    return "github_search";
+  }
+
+  if (/\b(who|what|when|where|which|history|explain|define|meaning of|latest|current)\b/.test(t)) {
+    return "web_search";
+  }
+
+  return null;
+}
+
+// ---- (2) Build the tool_choice for a given round ----
+export function buildToolChoice(round, userText) {
+  if (round !== 1) return "auto";
+  const forced = pickForcedTool(userText);
+  if (!forced) return "auto";
+  return { type: "function", function: { name: forced } };
 }
