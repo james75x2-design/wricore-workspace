@@ -421,7 +421,7 @@ async function callOpenAICompatOnce({ openaiMessages, tools, forceTools, env, te
         body: JSON.stringify(apiPayload)
       }, UPSTREAM_TIMEOUT_MS);
       if (response.status === 429) { failureLogs.push(`${activeModel.displayName}: 429`); continue; }
-      if (!response.ok) { failureLogs.push(`${activeModel.displayName}: ${response.status}`); continue; }
+      if (!response.ok) { const _b = await response.text().catch(() => ""); failureLogs.push(`${activeModel.displayName}: ${response.status} ${String(_b).slice(0, 400)}`); continue; }
       const data = await response.json();
       return { data, usedModel: activeModel.displayName };
     } catch (err) {
