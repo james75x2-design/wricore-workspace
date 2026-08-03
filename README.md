@@ -1,6 +1,6 @@
 # WriCoRe — Write · Code · Research
 
-**A dual-engine AI workspace with three specialized agents and grounded RAG — built for people who think better with a thinking partner.**
+**A dual-engine AI workspace with three specialized agents, grounded RAG, and an MCP tool-calling mode — built for people who think better with a thinking partner.**
 
 ![Status](https://img.shields.io/badge/status-live-brightgreen)
 ![Worker](https://img.shields.io/badge/worker-v3.3.0-blue)
@@ -11,12 +11,11 @@
 ![Backend](https://img.shields.io/badge/backend-Cloudflare%20Workers-orange)
 ![Engine](https://img.shields.io/badge/AI-Gemini%20%2B%20Groq-purple)
 ![Frontend](https://img.shields.io/badge/frontend-GitHub%20Pages-lightgrey)
-
----
+![MCP](https://img.shields.io/badge/MCP-enabled-8A2BE2)
 
 ## What Is WriCoRe?
 
-WriCoRe brings three specialized AI agents into one clean, focused workspace — powered by a dual-engine backend that automatically routes requests to the best available provider. **The Research Agent additionally supports Grounded RAG mode**, returning cited answers from an embedded knowledge base using hybrid retrieval + cross-encoder reranking. No API keys required from users. No switching between tools. No re-explaining context. Just start.
+WriCoRe brings three specialized AI agents into one clean, focused workspace — powered by a dual-engine backend that automatically routes requests to the best available provider. **The Research Agent additionally supports Grounded RAG mode**, returning cited answers from an embedded knowledge base using hybrid retrieval + cross-encoder reranking. The Worker also exposes an **MCP tool-calling mode** that can run real external tools (like Wikipedia search) in an agentic loop. No API keys required from users. No switching between tools. No re-explaining context. Just start.
 
 | Agent | Role | Best For | Modes |
 |-------|------|----------|-------|
@@ -30,7 +29,7 @@ Each agent has its own purpose-built system prompt, starter suggestions, and AI 
 
 ## 🚀 Live Demo
 
-👉 **[Try WriCoRe Live](https://james75x2-design.github.io/wricore-workspace/)**
+👉 **https://james75x2-design.github.io/wricore-workspace/**
 
 Backend health check: https://wricore.james75x2.workers.dev/health
 
@@ -160,6 +159,61 @@ USE_WORKER_RAG=false node src/rag/eval.mjs
 
 ---
 
+## 🔌 MCP Mode — Tool-Calling Loop *(v3.4.0)*
+
+Beyond Chat and Grounded RAG, the Worker supports an **MCP mode** that runs a provider-agnostic **tool-calling loop**: the model can call tools, the Worker executes them, feeds the results back, and the model composes a final grounded answer. This ports the MCP client pattern proven in VoyageFlow — one convergent architecture across both projects.
+
+> **Scope note (accuracy):** this is an **MCP tool-loop with real external _tools_** (e.g. Wikipedia search), **not** a client that connects to remote MCP _servers_ over JSON-RPC / Streamable HTTP. A true remote-MCP-server client is planned future work.
+
+### How it works
+
+```
+POST { mode: "mcp", messages: [...] }
+      ↓
+ 1. Model turn over the Gemini→Groq fallback queue (OpenAI-compatible),
+    with the tool registry attached
+      ↓
+ 2. tool_choice:"required" on the FIRST round forces a tool call; the Worker
+    executes it (e.g. web_search → Wikipedia). Subsequent rounds run "auto".
+      ↓
+ 3. Tool result is fed back into the transcript; the model writes a final
+    answer citing the returned sources
+      ↓
+ Response: { answer_markdown, tool_calls:[...], meta:{ rounds, tool_calls_count } }
+```
+
+### Tools
+
+| Tool | Type | Backing | Auth |
+|---|---|---|---|
+| `web_search` | Real external | Wikipedia REST API (`/w/rest.php/v1/search/page`) | Keyless |
+| `calculator` | Deterministic | Workers-safe recursive-descent parser (no `eval`) | — |
+| `current_time` | Deterministic | Runtime clock | — |
+
+- **web_search** returns title, description, excerpt, and article URL for up to 5 results; strips markup, times out at 8s, and degrades gracefully to an empty result set or a labeled error. A natural fit for the Research Agent.
+- **calculator** uses a hand-written parser — **not** `eval`/`Function`, which the Cloudflare Workers runtime blocks.
+
+### First-round tool forcing
+
+`tool_choice:"required"` guarantees the model calls a tool on round 1 (models otherwise skip tools for topics they think they know), then switches to `auto` so it uses the result and finalizes. This removed redundant repeat calls — measured **6 rounds / 5 identical calls → 2 rounds / 1 call**.
+
+### Example
+
+```bash
+curl -X POST https://wricore.james75x2.workers.dev/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "mode": "mcp",
+    "messages": [
+      { "role": "user", "content": "Search Wikipedia for the Model Context Protocol and summarize what it is." }
+    ]
+  }'
+```
+
+Returns a grounded summary plus a `tool_calls` array showing the `web_search` call and its Wikipedia results (titles + article URLs), with `meta.rounds` and `meta.tool_calls_count`.
+
+---
+
 ## 🏗️ Architecture
 
 <img src="https://raw.githubusercontent.com/james75x2-design/wricore-workspace/main/docs/screenshots/architecture.png" alt="WriCoRe Architecture Diagram — dual-engine AI workspace with Gemini primary and Groq fallback">
@@ -182,6 +236,14 @@ USE_WORKER_RAG=false node src/rag/eval.mjs
 5. Citation-enforced prompt sent to Gemini (with Groq fallback).
 6. Response normalized into `{ answer_markdown, citations, chunks_used }`.
 7. UI strips inline `[chunk_id]` markers from prose, renders Sources strip below.
+
+**Data flow (MCP mode — tool-calling loop)**
+
+1. Client POSTs `{ mode: "mcp", messages: [...] }` to the Worker.
+2. The Worker runs a tool-loop over the OpenAI-compatible Gemini→Groq queue.
+3. `tool_choice:"required"` forces a tool call on round 1; the Worker executes it (e.g. `web_search` → Wikipedia).
+4. The tool result is fed back; the model finalizes an answer citing sources.
+5. Response returns `answer_markdown`, the `tool_calls` trace, and `meta` (rounds, tool_calls_count).
 
 **Data flow (Eval harness — mirrors production path)**
 
@@ -210,7 +272,7 @@ The frontend header shows the **active engine** used for each response in real t
 ### Fallback trigger conditions
 
 The Worker falls back from Gemini to Groq on:
-- Non-2xx HTTP status from Gemini
+- Non-2xx HTTP status from Gemini (the response body is captured in logs for diagnosis)
 - Gemini safety block (`promptFeedback.blockReason`)
 - Empty or missing candidates/parts in the response
 - JSON parse failure on the Gemini response
@@ -223,6 +285,7 @@ The Worker falls back from Gemini to Groq on:
 
 - Three specialized AI agents — Writing, Coding, Research
 - **Grounded RAG mode on Research Agent (v3.3.0)** — hybrid retrieval + reranker + citations
+- **MCP tool-calling mode (v3.4.0)** — `mode:"mcp"` tool-loop with a real `web_search` tool (keyless Wikipedia), plus `calculator` and `current_time`
 - **Sources strip** — green chunk pills below RAG answers for verification
 - **Eval-to-production parity (v3.3.0 Phase 4)** — eval harness exercises the same Worker `mode:rag` code path production users hit
 - Dual-engine backend — Gemini primary, Groq fallback, fully automatic
@@ -259,8 +322,8 @@ Response:
 {
   "status": "ok",
   "service": "wricore-worker",
-  "version": "3.3.0",
-  "timestamp": "2026-07-21T00:00:00.000Z"
+  "version": "3.4.0",
+  "timestamp": "2026-07-27T00:00:00.000Z"
 }
 ```
 
@@ -285,11 +348,11 @@ Success response (200):
 {
   "choices": [{ "message": { "role": "assistant", "content": "…" } }],
   "model": "GEMINI-2.0-FLASH",
-  "meta": { "version": "3.3.0", "latency_ms": 780 }
+  "meta": { "version": "3.4.0", "latency_ms": 780 }
 }
 ```
 
-### `POST /` — Grounded RAG mode *(NEW in v3.3.0)*
+### `POST /` — Grounded RAG mode *(v3.3.0)*
 
 Set `mode: "rag"` to route through hybrid retrieval + reranker + citation-enforced generation.
 
@@ -316,12 +379,50 @@ Success response (200):
   "meta": {
     "mode": "rag",
     "model": "LLAMA-3.3-70B-VERSATILE",
-    "version": "3.3.0",
+    "version": "3.4.0",
     "latency_ms": 1554,
     "chunks_used": [
       { "chunk_id": "wricore-readme::002", "section": "What Is WriCoRe?", "score": 0.9954, "keyword_score": 36, "vector_score": 0.6983, "rerank_score": 0.9817 }
     ]
   }
+}
+```
+
+### `POST /` — MCP tool-calling mode *(NEW in v3.4.0)*
+
+Set `mode: "mcp"` to route through the tool-calling loop. The model may call `web_search` (keyless Wikipedia), `calculator`, or `current_time`; the Worker executes the tool and feeds the result back before the model finalizes.
+
+```bash
+curl -X POST https://wricore.james75x2.workers.dev/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "mode": "mcp",
+    "messages": [
+      { "role": "user", "content": "Search Wikipedia for the Model Context Protocol and summarize what it is." }
+    ]
+  }'
+```
+
+Success response (200, abridged):
+```json
+{
+  "answer_markdown": "The Model Context Protocol (MCP) is an open standard introduced by Anthropic in November 2024 … (https://en.wikipedia.org/wiki/Model_Context_Protocol)",
+  "mode": "mcp",
+  "model": "LLAMA-3.3-70B-VERSATILE",
+  "tool_calls": [
+    {
+      "name": "web_search",
+      "args": { "query": "Model Context Protocol" },
+      "result": {
+        "query": "Model Context Protocol",
+        "source": "wikipedia",
+        "results": [
+          { "title": "Model Context Protocol", "description": "Protocol for communicating between LLMs and applications", "excerpt": "The Model Context Protocol (MCP) is an open standard …", "url": "https://en.wikipedia.org/wiki/Model_Context_Protocol" }
+        ]
+      }
+    }
+  ],
+  "meta": { "mode": "mcp", "model": "LLAMA-3.3-70B-VERSATILE", "version": "3.4.0", "rounds": 2, "tool_calls_count": 1, "latency_ms": 2311 }
 }
 ```
 
@@ -349,10 +450,11 @@ Success response (200):
 | Frontend exposure | Zero — keys never appear in HTML, JS, or network responses |
 | CORS policy | Origin allowlist — `james75x2-design.github.io` + localhost dev |
 | Request validation | Worker rejects non-POST, malformed JSON, oversized payloads, empty message arrays |
-| Provider errors | Sanitized before returning to client — raw API errors never forwarded |
+| Provider errors | Sanitized before returning to client — raw API errors never forwarded (bodies captured in server logs only) |
 | Payload limits | Max 30 messages, max 8000 chars per message |
 | **RAG citation enforcement** | Hallucinated chunk IDs filtered against retrieved set before response |
 | **Prompt injection defense** | RAG prompt explicitly forbids inventing sources; verified via eval `eval-008` |
+| **MCP tool safety** | `calculator` uses a hand-written parser (no `eval`/`Function`); `web_search` is keyless and read-only with an 8s timeout |
 
 ---
 
@@ -368,16 +470,22 @@ Success response (200):
 - Inline `[chunk_id]` markers stripped from RAG prose for clean display
 - Text-to-speech via Web Speech API with markdown stripping for clean audio
 
-**Backend (Cloudflare Worker v3.3.0)**
+**Backend (Cloudflare Worker v3.4.0)**
 - ES module deployed via **Wrangler CLI** (`wrangler.toml` + `[ai]` binding)
 - Cloudflare Workers AI native models — no external embedding/rerank APIs
 - Chat mode: OpenAI-compatible dual-engine router (Gemini primary + Groq fallback)
 - **RAG mode**: hybrid retrieval + cross-encoder reranker + citation-enforced generation
+- **MCP mode**: provider-agnostic tool-loop (`runToolLoop`) with `tool_choice:"required"` first-round forcing; OpenAI-compatible tool/message adapters shared across Gemini + Groq
 - 31 chunks embedded inline in `data/index/worker-chunks.js` (~315 KB, well under 1 MB limit)
-- Helper functions: `jsonResponse()`, `getCorsHeaders()`, `fetchWithTimeout()`, `logEvent()`, `validateMessages()`, `ragRetrieveHybrid()`, `rerankCandidates()`, `ragBuildPrompt()`, `ragNormalizeAnswer()`
+- Helper functions: `jsonResponse()`, `getCorsHeaders()`, `fetchWithTimeout()`, `logEvent()`, `validateMessages()`, `ragRetrieveHybrid()`, `rerankCandidates()`, `ragBuildPrompt()`, `ragNormalizeAnswer()`, `callOpenAICompatOnce()`, `handleMcpMode()`
 - 25-second timeout on all upstream calls via `AbortController`
-- Structured JSON logging — severity-aware for Cloudflare log search, tagged with `retrieval_signal` + `ranking_signal`
+- Structured JSON logging — severity-aware for Cloudflare log search, tagged with `retrieval_signal` + `ranking_signal`; provider error bodies captured for diagnosis
 - Graceful fallback ladder: vector → keyword-only, reranker → hybrid fusion
+
+**MCP tool-loop (`src/mcp/`)**
+- `tool-loop.mjs` — provider-agnostic `runToolLoop` (model → tool → feedback → final)
+- `adapters.mjs` — OpenAI-compatible tool/message shaping (`toolsForOpenAI`, `messagesForOpenAI`, `parseOpenAIResponse`); one set covers both Gemini and Groq
+- `tools.mjs` — tool registry: `web_search` (keyless Wikipedia REST), `calculator` (Workers-safe parser), `current_time`
 
 **Local RAG pipeline (dev/eval)**
 - `src/rag/retrieve.mjs` — keyword-scored + hybrid retriever with stopwords, section boosts, phrase boosts
@@ -397,7 +505,7 @@ Success response (200):
 ```text
 wricore-workspace/
 ├── index.html                        # Frontend — React app with 3 agents + RAG mode toggle
-├── cloudflare_worker_proxy.js        # Cloudflare Worker v3.3.0 — dual-engine + mode:rag + reranker
+├── cloudflare_worker_proxy.js        # Cloudflare Worker v3.4.0 — dual-engine + mode:rag + mode:mcp
 ├── wrangler.toml                     # Wrangler CLI config with [ai] binding
 ├── README.md                         # This file
 ├── LICENSE                           # MIT
@@ -411,11 +519,16 @@ wricore-workspace/
 │       ├── chunks.jsonl              # Chunked KB with metadata
 │       ├── chunks-embedded.jsonl     # Same + embeddings
 │       └── worker-chunks.js          # Chunks + embeddings inlined for Worker
-├── src/rag/
-│   ├── retrieve.mjs                  # Local keyword + hybrid retriever
-│   ├── answer-with-context.mjs       # Worker mode:rag primary, local hybrid fallback
-│   ├── ingest-and-chunk.mjs          # KB ingestion
-│   └── eval.mjs                      # Eval harness with failure categorization + pipeline telemetry
+├── src/
+│   ├── mcp/
+│   │   ├── tool-loop.mjs             # Provider-agnostic tool-calling loop
+│   │   ├── adapters.mjs              # OpenAI-compatible tool/message adapters
+│   │   └── tools.mjs                 # Tool registry: web_search, calculator, current_time
+│   └── rag/
+│       ├── retrieve.mjs              # Local keyword + hybrid retriever
+│       ├── answer-with-context.mjs   # Worker mode:rag primary, local hybrid fallback
+│       ├── ingest-and-chunk.mjs      # KB ingestion
+│       └── eval.mjs                  # Eval harness with failure categorization + pipeline telemetry
 ├── scripts/
 │   ├── embed-chunks.mjs              # Batch-generate embeddings
 │   └── build-worker-chunks.mjs       # Rebuild worker-chunks.js
@@ -503,8 +616,11 @@ Exercises the Worker `mode:rag` code path — same one production users hit.
 - [x] **UI mode toggle (Phase 4 Component 1)** — Chat vs Grounded RAG on Research Agent + Sources strip
 - [x] **Eval-to-production parity (Phase 4 Components 2+3)** — local pipeline + eval harness both exercise Worker `mode:rag` code path; report includes `pipelines_used`, `retrieval_signals`, `ranking_signals`
 - [x] Wrangler CLI deploy pipeline with `[ai]` binding
+- [x] **MCP tool-loop mode (Phase 5, v3.4.0)** — `mode:"mcp"` with real external tools (`web_search` via keyless Wikipedia), `calculator`, and `current_time`; first-round `tool_choice:"required"` forcing
+- [ ] **Remote MCP-server client** — connect to remote MCP servers over JSON-RPC / Streamable HTTP
+- [ ] Additional MCP tools — GitHub (auth), documentation search; intent-based tool gating
 - [ ] Agent-aware retrieval — per-agent `top_k` and KB scoping (Writing vs Coding vs Research)
-- [ ] Intent classifier — auto-route between Chat and Grounded RAG based on query intent
+- [ ] Intent classifier — auto-route between Chat, Grounded RAG, and MCP based on query intent
 - [ ] Observability + debug mode — `?debug=1` URL param surfaces retrieval + rerank scores in UI
 - [ ] Mobile-responsive layout improvements
 - [ ] Persistent conversation history across sessions
@@ -512,8 +628,6 @@ Exercises the Worker `mode:rag` code path — same one production users hit.
 - [ ] Custom system prompt editor — define your own agents
 - [ ] Grounded RAG mode on Writing and Coding agents (with agent-specific KBs)
 - [ ] Streaming responses for faster perceived latency
-- [ ] MCP integration for enterprise workflow connectivity
-- [ ] Integration with AGAD — Assisted Generation of Approval Documents
 
 ---
 
@@ -523,7 +637,7 @@ I'm an externalizer — someone who thinks more clearly by working things throug
 
 For years, getting started on complex tasks felt slow and frustrating. AI changed that. But jumping between different tools, re-explaining context each time, and figuring out how to prompt a general chatbot for a specific task added friction back in.
 
-WriCoRe removes that friction. One workspace. Three focused agents. Two AI providers with automatic failover. Grounded RAG when you need factual answers with citations. No setup. Just start.
+WriCoRe removes that friction. One workspace. Three focused agents. Two AI providers with automatic failover. Grounded RAG when you need factual answers with citations. An MCP tool-loop when you need live external data. No setup. Just start.
 
 ---
 
@@ -531,7 +645,7 @@ WriCoRe removes that friction. One workspace. Three focused agents. Two AI provi
 
 **VoyageFlow — AI Travel Concierge** *(Live)*
 A free, zero-friction AI travel concierge with a Premium Booking Desk — instant itineraries and pre-filled deep links for flights, hotels, tours, and insurance. Built with the same dual-engine architecture (Gemini + Groq via Cloudflare Workers) and hybrid retrieval RAG (v2.3.0). Scored 91.6% on AgentTalent's Sensei evaluation suite.
-🔗 [Try VoyageFlow Live](https://james75x2-design.github.io/VoyageFlow/)
+🔗 https://james75x2-design.github.io/VoyageFlow/
 
 **AGAD — Assisted Generation of Approval Documents** *(In Development)*
 An AI-powered tool helping Filipino patients and their families navigate hospital LOA and insurance approval processes — built from direct personal experience with the problem. Designed for the exhausted family member standing in a hospital billing queue at 3am, trying to navigate a system they don't understand.
@@ -559,6 +673,7 @@ MIT License — free to use, modify, and share with attribution. See `LICENSE` f
 
 | Version | Changes |
 |---------|---------|
+| **v3.4.0** (Phase 5 — MCP) | **MCP tool-calling mode** (`mode: "mcp"`) — a provider-agnostic tool-loop (`src/mcp/`) over the OpenAI-compatible Gemini→Groq queue with `tool_choice:"required"` first-round forcing (measured 6 rounds/5 calls → 2 rounds/1 call). Tools: **`web_search`** (real external, keyless Wikipedia REST), `calculator` (Workers-safe recursive-descent parser, no `eval`), `current_time`. Provider error response bodies now captured in logs for diagnosis. Scope note: real external **tools** via the MCP loop — a remote MCP-**server** client (JSON-RPC/Streamable HTTP) is future work |
 | **v3.3.0** (Phase 4 complete) | **Cross-encoder reranker** (`@cf/baai/bge-reranker-base`) refines top-20 hybrid candidates to top-5; `chunks_used` includes `rerank_score`; structured logs tag `ranking_signal`; graceful fallback to hybrid fusion if reranker fails. **UI mode toggle** on Research Agent with Sources strip. **Eval-to-production parity**: `answer-with-context.mjs` prefers Worker `mode:rag` (backward compatible with `USE_WORKER_RAG=false`); `eval.mjs` reports `pipelines_used`, `retrieval_signals`, `ranking_signals` — regressions in Worker retrieval/rerank surface immediately in eval reports |
 | **v3.2.0** | **Grounded RAG mode** (`mode: "rag"`) with 31 embedded knowledge base chunks; hybrid retrieval (keyword + vector cosine similarity via `@cf/baai/bge-small-en-v1.5`); citation enforcement filters hallucinated chunk IDs; structured logs tag `retrieval_signal`; Wrangler CLI deploy pipeline with `[ai]` binding |
 | **v3.1** | CORS allowlist, `/health` endpoint, structured JSON logging, 25s timeout protection via `AbortController`, payload validation (max 30 messages, max 8000 chars), version + latency metadata in every response, cleaner model queue |
@@ -566,7 +681,7 @@ MIT License — free to use, modify, and share with attribution. See `LICENSE` f
 | v2.6 | Groq-only with Cloudflare Worker proxy, text-to-speech, markdown export, branch chat, feedback buttons |
 | v2.5 | Initial multi-provider version (Gemini, OpenRouter, Groq, GitHub Models) |
 
-### Phase-by-phase RAG evolution (Sunday July 20, 2026)
+### Phase-by-phase evolution
 
 | Phase | Ship | Impact |
 |---|---|---|
@@ -575,6 +690,7 @@ MIT License — free to use, modify, and share with attribution. See `LICENSE` f
 | **Phase 3** — Cross-encoder reranker | `@cf/baai/bge-reranker-base` refines candidates | Higher answer quality with rerank scores |
 | **Phase 4 Component 1** — UI mode toggle | Research Agent shows Chat / Grounded RAG toggle + Sources strip | End-users can trigger RAG mode |
 | **Phase 4 Components 2+3** — Eval parity | Local pipeline + eval both use Worker `mode:rag`; new pipeline/signal telemetry in reports | Regressions surface immediately in eval reports |
+| **Phase 5** — MCP tool-loop | `mode:"mcp"` with real `web_search` (keyless Wikipedia), calculator, current_time; first-round tool forcing | Agentic tool use with live external data, one call per query |
 
 ---
 
