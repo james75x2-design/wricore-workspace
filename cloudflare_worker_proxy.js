@@ -1,5 +1,6 @@
 import { WRICORE_CHUNKS, EMBEDDING_MODEL, EMBEDDING_DIMS } from "./data/index/worker-chunks.js";
 import { runToolLoop } from "./src/mcp/tool-loop.mjs";
+import { buildToolChoice } from "./src/mcp/tools.mjs";
 import { toolsForOpenAI, messagesForOpenAI, parseOpenAIResponse } from "./src/mcp/adapters.mjs";
 import { TOOL_DEFS, executeTool } from "./src/mcp/tools.mjs";
 
@@ -398,7 +399,7 @@ const MCP_SYSTEM_PROMPT =
 
 // One model turn over the Gemini->Groq fallback queue, OpenAI-compatible.
 // Returns { data, usedModel }. tool_choice forces a tool call when forceTools.
-async function callOpenAICompatOnce({ openaiMessages, tools, forceTools, env, temperature }) {
+async function callOpenAICompatOnce({ openaiMessages, tools, forceTools, toolChoice, env, temperature }) {
   const activeQueue = MODEL_QUEUE_TEMPLATE.filter(m => env[m.envKey]);
   if (activeQueue.length === 0) throw new Error("no_providers_configured");
   const failureLogs = [];
@@ -410,7 +411,7 @@ async function callOpenAICompatOnce({ openaiMessages, tools, forceTools, env, te
         temperature,
         stream: false,
         tools,
-        tool_choice: forceTools ? "required" : "auto"
+        tool_choice: toolChoice != null ? toolChoice : (forceTools ? "required" : "auto")
       };
       const response = await fetchWithTimeout(activeModel.url, {
         method: "POST",
@@ -449,10 +450,11 @@ async function handleMcpMode({ messages, env, temperature, corsHeaders, startTim
         // Force a tool call only on the FIRST round, then let the model use the
         // result and finalize. Forcing every round made it re-call redundantly
         // (e.g. calculator fired 5x for the same expression). Phase 5c fix.
-        const force = round === 1;
+        const latestUserText = [...messages].reverse().find(msg => msg.role === "user")?.content || "";
+        const toolChoice = buildToolChoice(round, latestUserText);
         const openaiMessages = messagesForOpenAI(working, MCP_SYSTEM_PROMPT);
         const { data, usedModel: m } = await callOpenAICompatOnce({
-          openaiMessages, tools, forceTools: force, env, temperature
+          openaiMessages, tools, toolChoice, env, temperature
         });
         usedModel = m;
         return parseOpenAIResponse(data);
