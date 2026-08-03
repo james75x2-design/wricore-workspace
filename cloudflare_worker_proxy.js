@@ -1,4 +1,7 @@
 import { WRICORE_CHUNKS, EMBEDDING_MODEL, EMBEDDING_DIMS } from "./data/index/worker-chunks.js";
+import { runToolLoop } from "./src/mcp/tool-loop.mjs";
+import { toolsForOpenAI, messagesForOpenAI, parseOpenAIResponse } from "./src/mcp/adapters.mjs";
+import { TOOL_DEFS, executeTool } from "./src/mcp/tools.mjs";
 
 /**
  * WriCoRe Cloudflare Worker Proxy — Dual-Engine Router (v3.1.0)
@@ -387,6 +390,102 @@ function ragExtractQuery(messages) {
   return "";
 }
 
+// ─── MCP Mode (Phase 5) — tool-calling loop over the OpenAI-compatible queue ───
+const MCP_MAX_ROUNDS = 6;
+const MCP_SYSTEM_PROMPT =
+  "You are WriCoRe with tool access. Use the provided tools when they help " +
+  "answer accurately. After using tools, give a clear final answer.";
+
+// One model turn over the Gemini->Groq fallback queue, OpenAI-compatible.
+// Returns { data, usedModel }. tool_choice forces a tool call when forceTools.
+async function callOpenAICompatOnce({ openaiMessages, tools, forceTools, env, temperature }) {
+  const activeQueue = MODEL_QUEUE_TEMPLATE.filter(m => env[m.envKey]);
+  if (activeQueue.length === 0) throw new Error("no_providers_configured");
+  const failureLogs = [];
+  for (const activeModel of activeQueue) {
+    try {
+      const apiPayload = {
+        model: activeModel.modelId,
+        messages: openaiMessages,
+        temperature,
+        stream: false,
+        tools,
+        tool_choice: forceTools ? "required" : "auto"
+      };
+      const response = await fetchWithTimeout(activeModel.url, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${env[activeModel.envKey]}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(apiPayload)
+      }, UPSTREAM_TIMEOUT_MS);
+      if (response.status === 429) { failureLogs.push(`${activeModel.displayName}: 429`); continue; }
+      if (!response.ok) { failureLogs.push(`${activeModel.displayName}: ${response.status}`); continue; }
+      const data = await response.json();
+      return { data, usedModel: activeModel.displayName };
+    } catch (err) {
+      failureLogs.push(`${activeModel.displayName}: ${err.message}`);
+      continue;
+    }
+  }
+  throw new Error("All providers failed: " + failureLogs.join(" | "));
+}
+
+// mode:"mcp" handler — drives runToolLoop; forces tools on all rounds but the
+// last (so tools fire yet the loop still finalizes). Returns a Response.
+async function handleMcpMode({ messages, env, temperature, corsHeaders, startTime }) {
+  const openaiTools = toolsForOpenAI(TOOL_DEFS);
+  let usedModel = "none";
+  try {
+    const result = await runToolLoop({
+      messages: messages.map(m => ({ role: m.role, content: m.content })),
+      tools: openaiTools,
+      executeTool,
+      ctx: { env },
+      maxRounds: MCP_MAX_ROUNDS,
+      logEvent,
+      callModel: async (working, tools, { round, maxRounds }) => {
+        const force = round < maxRounds;
+        const openaiMessages = messagesForOpenAI(working, MCP_SYSTEM_PROMPT);
+        const { data, usedModel: m } = await callOpenAICompatOnce({
+          openaiMessages, tools, forceTools: force, env, temperature
+        });
+        usedModel = m;
+        return parseOpenAIResponse(data);
+      }
+    });
+    if (result.error) {
+      logEvent("warn", "mcp_loop_incomplete", { error: result.error, rounds: result.rounds });
+      return jsonResponse({
+        error: `MCP tool loop did not complete: ${result.error}`,
+        meta: { mode: "mcp", version: WORKER_VERSION, latency_ms: Date.now() - startTime }
+      }, 502, corsHeaders);
+    }
+    logEvent("info", "request_succeeded", { mode: "mcp", model: usedModel, tool_calls: result.toolCalls.length, latency_ms: Date.now() - startTime });
+    return jsonResponse({
+      answer_markdown: result.finalText,
+      mode: "mcp",
+      model: usedModel,
+      tool_calls: result.toolCalls.map(t => ({ name: t.name, args: t.args, result: t.result })),
+      meta: {
+        mode: "mcp",
+        model: usedModel,
+        version: WORKER_VERSION,
+        rounds: result.rounds,
+        tool_calls_count: result.toolCalls.length,
+        latency_ms: Date.now() - startTime
+      }
+    }, 200, corsHeaders);
+  } catch (err) {
+    logEvent("error", "mcp_mode_failed", { error: err.message });
+    return jsonResponse({
+      error: `MCP mode failed: ${err.message}`,
+      meta: { mode: "mcp", version: WORKER_VERSION, latency_ms: Date.now() - startTime }
+    }, 502, corsHeaders);
+  }
+}
+
 // ─── ES Module Export ─────────────────────────────────────────────────────────
 export default {
   async fetch(request, env) {
@@ -442,7 +541,12 @@ export default {
     }
 
     const temperature = requestData.temperature ?? 0.7;
-    const mode = requestData.mode === "rag" ? "rag" : "chat";
+    const mode = requestData.mode === "rag" ? "rag" : requestData.mode === "mcp" ? "mcp" : "chat";
+
+    // ── MCP mode: tool-calling loop (Phase 5) — additive, leaves chat/rag intact ──
+    if (mode === "mcp") {
+      return await handleMcpMode({ messages, env, temperature, corsHeaders, startTime });
+    }
 
     // ── RAG mode: retrieve + build citation-enforcing prompt ───────────────
     let ragChunks = [];
