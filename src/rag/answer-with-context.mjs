@@ -374,76 +374,76 @@ function validateAnswer(answerObj, chunks) {
 }
 
 export async function answerWithContext(query) {
-  const rawRetrievedChunks = await retrieve(query, TOP_K);
-
-  const retrievedChunks = rawRetrievedChunks
-    .filter(c => c.text && cleanText(c.text).length > 0)
-    .slice(0, TOP_K);
-
-  const selectedChunks = selectChunksForPrompt(query, retrievedChunks);
-
-  if (selectedChunks.length === 0) {
+  // Eval-parity fix: call the deployed Worker's mode:"rag" path so retrieval +
+  // cross-encoder reranking run IN production (not locally). Send the RAW query
+  // — the Worker's ragExtractQuery uses the last user message as the query, so a
+  // pre-built prompt would break retrieval. Fails LOUDLY on worker error so the
+  // eval always reflects true production behavior (no silent local fallback).
+  let w;
+  try {
+    const response = await fetch(WRICORE_WORKER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mode: "rag",
+        messages: [{ role: "user", content: query }]
+      })
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      return {
+        query,
+        answer_markdown: FALLBACK_ANSWER,
+        citations: [],
+        unanswered: true,
+        pipeline: "worker_rag",
+        retrieval_signal: "none",
+        ranking_signal: "none",
+        validation: { valid: true, checks: { worker_error: true } },
+        debug: {
+          worker_error: true,
+          status: response.status,
+          raw_output: String(errorText).slice(0, 300),
+          worker_url: WRICORE_WORKER_URL
+        }
+      };
+    }
+    w = await response.json();
+  } catch (err) {
     return {
       query,
       answer_markdown: FALLBACK_ANSWER,
       citations: [],
       unanswered: true,
-      validation: {
-        valid: true,
-        checks: {
-          no_usable_chunks_or_prompt_too_large: true
-        }
-      },
-      debug: {
-        retrieved_count: rawRetrievedChunks.length,
-        chunks_after_text_filter: retrievedChunks.length,
-        chunks_used: []
-      }
+      pipeline: "worker_rag",
+      retrieval_signal: "none",
+      ranking_signal: "none",
+      validation: { valid: true, checks: { worker_exception: true } },
+      debug: { worker_error: true, error: err.message, worker_url: WRICORE_WORKER_URL }
     };
   }
 
-  const contextBlock = buildContext(selectedChunks);
-  const prompt = buildPrompt(query, selectedChunks);
-
-  const sourceMap = selectedChunks.map(c => ({
-    chunk_id: c.chunk_id,
-    section: c.section,
-    source_path: c.source_path || c.source,
-    score: c.score
-  }));
-
-  const rawWorkerResponse = await callLLMThroughWorker({
-    query,
-    prompt,
-    contextBlock,
-    sourceMap
-  });
-
-  const answerObj = normalizeModelOutput(rawWorkerResponse);
-  const validation = validateAnswer(answerObj, selectedChunks);
-
-  const extractedTextPreview = cleanText(
-    extractTextFromWorkerResponse(rawWorkerResponse)
-  ).slice(0, 500);
+  const chunksUsed = (w && w.meta && Array.isArray(w.meta.chunks_used)) ? w.meta.chunks_used : [];
+  const anyRerank = chunksUsed.some(c => c.rerank_score != null);
+  const anyVector = chunksUsed.some(c => (c.vector_score ?? 0) > 0);
 
   return {
     query,
-    answer_markdown: answerObj.answer_markdown || "",
-    citations: Array.isArray(answerObj.citations) ? answerObj.citations : [],
-    unanswered:
-      typeof answerObj.unanswered === "boolean" ? answerObj.unanswered : true,
-    validation,
+    answer_markdown: typeof w.answer_markdown === "string" ? w.answer_markdown : "",
+    citations: Array.isArray(w.citations) ? w.citations : [],
+    unanswered: typeof w.unanswered === "boolean" ? w.unanswered : true,
+    pipeline: "worker_rag",
+    retrieval_signal: chunksUsed.length === 0 ? "none" : (anyVector ? "hybrid" : "keyword_only"),
+    ranking_signal: chunksUsed.length === 0 ? "none" : (anyRerank ? "reranker" : "hybrid_fusion"),
+    validation: { valid: true, checks: {} },
     debug: {
-      retrieved_count: rawRetrievedChunks.length,
-      chunks_after_text_filter: retrievedChunks.length,
-      chunks_used_count: selectedChunks.length,
-      chunks_used: sourceMap,
-      prompt_chars: prompt.length,
+      model: (w.meta && w.meta.model) || null,
+      latency_ms: (w.meta && w.meta.latency_ms) ?? null,
+      chunks_used_count: chunksUsed.length,
+      chunks_used: chunksUsed,
+      chunk_ids: chunksUsed.map(c => c.chunk_id),
       worker_url: WRICORE_WORKER_URL,
-      worker_error: Boolean(answerObj.worker_error),
-      parse_warning: Boolean(answerObj.parse_warning),
-      extracted_text_preview: extractedTextPreview,
-      raw_output_included: Boolean(answerObj.raw_output)
+      worker_error: false
     }
   };
 }
