@@ -678,8 +678,9 @@ Exercises the Worker `mode:rag` code path — same one production users hit.
 - [x] **Eval-to-production parity (Phase 4 Components 2+3)** — local pipeline + eval harness both exercise Worker `mode:rag` code path; report includes `pipelines_used`, `retrieval_signals`, `ranking_signals`
 - [x] Wrangler CLI deploy pipeline with `[ai]` binding
 - [x] **MCP tool-loop mode (Phase 5, v3.4.0)** — `mode:"mcp"` with real external tools (`web_search` via keyless Wikipedia), `calculator`, and `current_time`; first-round `tool_choice:"required"` forcing
-- [ ] **Remote MCP-server client** — connect to remote MCP servers over JSON-RPC / Streamable HTTP
-- [ ] Additional MCP tools — GitHub (auth), documentation search; intent-based tool gating
+- [x] **GitHub search tool + intent-based tool gating** — `github_search` added alongside `web_search`, `calculator`, and `current_time`; first-round tool forcing now selects the appropriate tool based on user intent
+- [x] **Tool-loop dedupe visibility** — repeated identical tool calls are cached within a loop, exposed via `tool_calls[].deduped`, and logged through `tool_call_deduped` telemetry
+- [ ] Documentation search tool — future MCP tool for documentation and reference lookup
 - [ ] Agent-aware retrieval — per-agent `top_k` and KB scoping (Writing vs Coding vs Research)
 - [ ] Intent classifier — auto-route between Chat, Grounded RAG, and MCP based on query intent
 - [ ] Observability + debug mode — `?debug=1` URL param surfaces retrieval + rerank scores in UI
