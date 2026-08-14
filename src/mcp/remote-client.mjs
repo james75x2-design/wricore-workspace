@@ -15,22 +15,30 @@ export async function callRemoteMcpServer({
 
   try {
     const response = await fetch(serverUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      signal: controller.signal,
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: (crypto.randomUUID?.() || String(Date.now())),
-        method,
-        params
-      })
-    });
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "Accept": "application/json, text/event-stream"
+  },
+  signal: controller.signal,
+  body: JSON.stringify({
+    jsonrpc: "2.0",
+    id: (crypto.randomUUID?.() || String(Date.now())),
+    method,
+    params
+  })
+});
 
-    if (!response.ok) {
-      throw new Error(`Remote MCP HTTP ${response.status}`);
-    }
+if (!response.ok) {
+  let bodyText = "";
+  try {
+    bodyText = (await response.text()).slice(0, 300);
+  } catch (_) {}
+
+  throw new Error(
+    `Remote MCP HTTP ${response.status}${bodyText ? ": " + bodyText : ""}`
+  );
+}
 
     const payload = await response.json();
 
