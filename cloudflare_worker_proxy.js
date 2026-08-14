@@ -454,6 +454,20 @@ function normalizeRemoteToolSchema(tool) {
 
 async function buildRemoteMcpToolState(env) {
   const serverUrl = env && env.REMOTE_MCP_URL ? String(env.REMOTE_MCP_URL).trim() : "";
+    if (serverUrl) {
+    try {
+      const u = new URL(serverUrl);
+      logEvent("info", "remote_mcp_url_configured", {
+        host: u.host,
+        pathname: u.pathname,
+        length: serverUrl.length
+      });
+    } catch {
+      logEvent("warn", "remote_mcp_url_invalid", {
+        length: serverUrl.length
+      });
+    }
+  }
   if (!serverUrl) return { serverUrl: "", toolDefs: [], toolMap: new Map() };
 
   try {
