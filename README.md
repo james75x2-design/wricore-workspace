@@ -681,7 +681,7 @@ Exercises the Worker `mode:rag` code path — same one production users hit.
 - [x] **GitHub search tool + intent-based tool gating** — `github_search` added alongside `web_search`, `calculator`, and `current_time`; first-round tool forcing now selects the appropriate tool based on user intent
 - [x] **Tool-loop dedupe visibility** — repeated identical tool calls are cached within a loop, exposed via `tool_calls[].deduped`, and logged through `tool_call_deduped` telemetry
 - [x] **Remote MCP client foundation** — JSON-RPC `tools/list` and `tools/call` support added behind `REMOTE_MCP_URL`; remote tools are prefixed with `remote__...` and local tools remain the default path
-- [ ] **Remote MCP production validation** — test against a live remote MCP server and document supported Streamable HTTP behavior
+- [x] **Remote MCP production validation** — validated against a live Cloudflare-hosted MCP server exposing `tools/list` and `tools/call`; WriCoRe successfully loaded `remote__echo`, executed it through the remote `tools/call` path, and preserved local tool behavior
 - [ ] Documentation search tool — future MCP tool for documentation and reference lookup
 - [ ] Agent-aware retrieval — per-agent `top_k` and KB scoping (Writing vs Coding vs Research)
 - [ ] Intent classifier — auto-route between Chat, Grounded RAG, and MCP based on query intent
