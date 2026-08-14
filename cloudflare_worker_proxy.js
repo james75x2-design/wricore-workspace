@@ -3,6 +3,7 @@ import { runToolLoop } from "./src/mcp/tool-loop.mjs";
 import { buildToolChoice } from "./src/mcp/tools.mjs";
 import { toolsForOpenAI, messagesForOpenAI, parseOpenAIResponse } from "./src/mcp/adapters.mjs";
 import { TOOL_DEFS, executeTool } from "./src/mcp/tools.mjs";
+import { listRemoteTools, callRemoteTool } from "./src/mcp/remote-client.mjs";
 
 /**
  * WriCoRe Cloudflare Worker Proxy — Dual-Engine Router (v3.1.0)
@@ -433,16 +434,87 @@ async function callOpenAICompatOnce({ openaiMessages, tools, forceTools, toolCho
   throw new Error("All providers failed: " + failureLogs.join(" | "));
 }
 
+
+// Remote MCP integration helpers. Disabled unless env.REMOTE_MCP_URL is set.
+const REMOTE_TOOL_PREFIX = "remote__";
+
+function sanitizeRemoteToolName(name) {
+  return String(name || "tool")
+    .trim()
+    .replace(/[^A-Za-z0-9_-]/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 48) || "tool";
+}
+
+function normalizeRemoteToolSchema(tool) {
+  return tool && typeof tool === "object"
+    ? (tool.inputSchema || tool.parameters || { type: "object", properties: {}, required: [] })
+    : { type: "object", properties: {}, required: [] };
+}
+
+async function buildRemoteMcpToolState(env) {
+  const serverUrl = env && env.REMOTE_MCP_URL ? String(env.REMOTE_MCP_URL).trim() : "";
+  if (!serverUrl) return { serverUrl: "", toolDefs: [], toolMap: new Map() };
+
+  try {
+    const listed = await listRemoteTools(serverUrl);
+    const remoteTools = Array.isArray(listed)
+      ? listed
+      : (Array.isArray(listed && listed.tools) ? listed.tools : []);
+
+    const toolMap = new Map();
+    const toolDefs = [];
+
+    for (const tool of remoteTools) {
+      if (!tool || !tool.name) continue;
+
+      const remoteName = String(tool.name);
+      let localName = REMOTE_TOOL_PREFIX + sanitizeRemoteToolName(remoteName);
+      let i = 2;
+
+      while (toolMap.has(localName) || TOOL_DEFS.some(t => t.name === localName)) {
+        localName = REMOTE_TOOL_PREFIX + sanitizeRemoteToolName(remoteName) + "_" + i++;
+      }
+
+      toolMap.set(localName, remoteName);
+      toolDefs.push({
+        name: localName,
+        description: `[remote MCP] ${tool.description || remoteName}`,
+        parameters: normalizeRemoteToolSchema(tool)
+      });
+    }
+
+    logEvent("info", "remote_mcp_tools_loaded", { count: toolDefs.length });
+    return { serverUrl, toolDefs, toolMap };
+  } catch (err) {
+    logEvent("warn", "remote_mcp_tools_failed", {
+      error: String(err && err.message ? err.message : err)
+    });
+    return { serverUrl, toolDefs: [], toolMap: new Map() };
+  }
+}
+
+async function executeMcpTool(name, args, ctx, remoteState) {
+  if (remoteState && remoteState.toolMap && remoteState.toolMap.has(name)) {
+    const remoteName = remoteState.toolMap.get(name);
+    return callRemoteTool(remoteState.serverUrl, remoteName, args || {});
+  }
+
+  return executeTool(name, args, ctx);
+}
+
 // mode:"mcp" handler — drives runToolLoop; forces tools on all rounds but the
 // last (so tools fire yet the loop still finalizes). Returns a Response.
 async function handleMcpMode({ messages, env, temperature, corsHeaders, startTime }) {
-  const openaiTools = toolsForOpenAI(TOOL_DEFS);
+  const remoteState = await buildRemoteMcpToolState(env);
+  const mcpToolDefs = [...TOOL_DEFS, ...remoteState.toolDefs];
+  const openaiTools = toolsForOpenAI(mcpToolDefs);
   let usedModel = "none";
   try {
     const result = await runToolLoop({
       messages: messages.map(m => ({ role: m.role, content: m.content })),
       tools: openaiTools,
-      executeTool,
+      executeTool: (name, args, ctx) => executeMcpTool(name, args, ctx, remoteState),
       ctx: { env },
       maxRounds: MCP_MAX_ROUNDS,
       logEvent,
