@@ -22,7 +22,7 @@ export async function callRemoteMcpServer({
       signal: controller.signal,
       body: JSON.stringify({
         jsonrpc: "2.0",
-        id: crypto.randomUUID(),
+        id: (crypto.randomUUID?.() || String(Date.now())),
         method,
         params
       })
