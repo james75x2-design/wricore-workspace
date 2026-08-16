@@ -317,6 +317,42 @@ redundant work.
 
 ---
 
+### 5. MCP Regression Testing
+
+Validate the MCP subsystem with:
+
+```bash
+node scripts/eval-mcp.mjs
+```
+
+Example output:
+
+```text
+[MCP EVAL]
+
+✓ calculator execution
+✓ calculator routing
+✓ github routing
+✓ web_search routing
+✓ round 2 uses auto
+✓ remote MCP client
+
+Summary: 6/6 passed
+```
+
+The suite verifies:
+
+- Calculator tool execution
+- Intent-based calculator routing
+- Intent-based GitHub routing
+- Intent-based web search routing
+- Round-1-only forcing gate behavior (round 2 returns to auto mode)
+- Remote MCP client functionality
+
+Run this before major MCP changes to catch regressions in tool execution or routing behavior.
+
+---
+
 ## 🤖 Dual-Engine Architecture
 
 WriCoRe uses a **Cloudflare Worker** as a secure backend proxy that manages two AI providers automatically:
@@ -664,6 +700,8 @@ node src/rag/eval.mjs
 ```
 
 Exercises the Worker `mode:rag` code path — same one production users hit.
+
+
 
 ---
 
