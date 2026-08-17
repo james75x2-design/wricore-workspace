@@ -46,6 +46,7 @@
     const ThumbsDownIcon = ({ className, ...props }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm12-3h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3" /></svg>);
     const InfoIcon = ({ className, ...props }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>);
     const BookIcon = ({ className, ...props }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>);
+    const BarChart2Icon = ({ className, ...props }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></svg>);
 
     const WORKER_URL = 'https://wricore.james75x2.workers.dev/';
 
@@ -68,6 +69,15 @@
         emptyStateIcon: <Code2Icon className="w-8 h-8 text-[#a78bfa]" />,
         suggestions: ["Write a responsive CSS flexbox layout example with modern styling", "Create a JavaScript function with exponential backoff for fetching APIs", "Explain the Big O complexity of quicksort vs mergesort with code snippets"]
       },
+      data: {
+        id: 'data', name: 'Data Agent', badge: 'DATA-BOT v3.1',
+        tagline: 'Analytics & Data Insight Specialist',
+        description: 'Your quantitative analyst for datasets, SQL, statistics, and turning numbers into clear insight.',
+        systemInstruction: `You are the WriCoRe Data Agent, a senior data analyst and analytics engineer.\n- Interpret datasets, explain statistics, and reason clearly about metrics and trends.\n- Write clean, well-commented SQL and pandas code, and explain the transformation logic.\n- Structure findings as tables, summary statistics, and explicit "what the data says" takeaways.\n- Be precise, quantitative, and objective; state assumptions and data limitations honestly.`,
+        color: '#f59e0b', glowColor: 'rgba(245, 158, 11, 0.08)',
+        emptyStateIcon: <BarChart2Icon className="w-8 h-8 text-[#f59e0b]" />,
+        suggestions: ["Write a SQL query to find the top 5 customers by total revenue", "Explain the difference between mean, median, and mode with examples", "Outline an A/B test analysis plan for a checkout conversion experiment"]
+      },
       research: {
         id: 'research', name: 'Research Agent', badge: 'ANALYST-BOT v3.1',
         tagline: 'Deep Analysis & Grounded Researcher',
@@ -82,7 +92,7 @@
     function App() {
       const DEBUG = new URLSearchParams(window.location.search).get('debug') === '1';
       const [activeAgent, setActiveAgent] = useState('write');
-      const [messages, setMessages] = useState({ write: [], code: [], research: [] });
+      const [messages, setMessages] = useState({ write: [], code: [], research: [], data: [] });
       const [userInput, setUserInput] = useState('');
       const [isLoading, setIsLoading] = useState(false);
       const [errorMsg, setErrorMsg] = useState(null);
@@ -277,7 +287,7 @@
               <div className="font-mono text-[10px] uppercase text-[#4a5568] tracking-widest mt-0.5">Active Engine: <span className="text-white font-bold">{isDemoMode ? 'OFFLINE SIMULATION' : activeEngine}</span></div>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
-              {isDemoMode && (<button type="button" onClick={() => { setIsDemoMode(false); setMessages(prev => ({ write: [], code: [], research: [] })); setActiveEngine('WAITING FOR PROMPT'); }} className="px-2.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg text-xs font-semibold font-mono">DEMO ACTIVE</button>)}
+              {isDemoMode && (<button type="button" onClick={() => { setIsDemoMode(false); setMessages(prev => ({ write: [], code: [], research: [], data: [] })); setActiveEngine('WAITING FOR PROMPT'); }} className="px-2.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg text-xs font-semibold font-mono">DEMO ACTIVE</button>)}
               <button type="button" onClick={handleClearChat} className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-red-500/10 hover:text-red-400 border border-white/5 hover:border-red-500/20 rounded-lg text-xs font-medium text-[#8b9ab5] transition-all"><TrashIcon className="w-3.5 h-3.5" /><span className="hidden sm:inline">Clear Chat</span></button>
             </div>
           </header>
@@ -290,6 +300,7 @@
                   {cfg.id === 'write' && <PenToolIcon className="w-5 h-5" style={{ color: isSelected ? cfg.color : '' }} />}
                   {cfg.id === 'code' && <Code2Icon className="w-5 h-5" style={{ color: isSelected ? cfg.color : '' }} />}
                   {cfg.id === 'research' && <SearchIcon className="w-5 h-5" style={{ color: isSelected ? cfg.color : '' }} />}
+                  {cfg.id === 'data' && <BarChart2Icon className="w-5 h-5" style={{ color: isSelected ? cfg.color : '' }} />}
                   <span className="text-xs sm:text-sm font-semibold tracking-wide">{cfg.name}</span>
                 </button>
               );

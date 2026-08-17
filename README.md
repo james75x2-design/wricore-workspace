@@ -726,7 +726,7 @@ Exercises the Worker `mode:rag` code path — same one production users hit.
 - [x] Observability + debug mode — `?debug=1` URL param surfaces retrieval + rerank scores in UI
 - [ ] Mobile-responsive layout improvements
 - [ ] Persistent conversation history across sessions
-- [ ] Additional agent personas (Data Agent, Design Agent)
+- [x] Additional agent personas (Data Agent)
 - [ ] Custom system prompt editor — define your own agents
 - [ ] Grounded RAG mode on Writing and Coding agents (with agent-specific KBs)
 - [ ] Streaming responses for faster perceived latency
