@@ -723,7 +723,7 @@ Exercises the Worker `mode:rag` code path — same one production users hit.
 - [ ] Documentation search tool — future MCP tool for documentation and reference lookup
 - [ ] Agent-aware retrieval — per-agent `top_k` and KB scoping (Writing vs Coding vs Research)
 - [ ] Intent classifier — auto-route between Chat, Grounded RAG, and MCP based on query intent
-- [ ] Observability + debug mode — `?debug=1` URL param surfaces retrieval + rerank scores in UI
+- [x] Observability + debug mode — `?debug=1` URL param surfaces retrieval + rerank scores in UI
 - [ ] Mobile-responsive layout improvements
 - [ ] Persistent conversation history across sessions
 - [ ] Additional agent personas (Data Agent, Design Agent)
