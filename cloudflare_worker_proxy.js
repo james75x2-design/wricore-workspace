@@ -9,7 +9,7 @@ import { listRemoteTools, callRemoteTool } from "./src/mcp/remote-client.mjs";
  * WriCoRe Cloudflare Worker Proxy — Dual-Engine Router (v3.1.0)
  * Format:    ES Module
  * Primary:   Google Gemini (gemini-2.0-flash, via OpenAI-compatible endpoint)
- * Fallback:  Groq (llama-3.3-70b-versatile)
+ * Fallback:  Groq (openai/gpt-oss-120b)
  *
  * v3.3 Improvements over v3.2:
  *   - Cross-encoder reranker (@cf/baai/bge-reranker-base)
@@ -51,7 +51,7 @@ const MODEL_QUEUE_TEMPLATE = [
   },
   {
     provider: "groq",
-    modelId: "llama-3.3-70b-versatile",
+    modelId: "openai/gpt-oss-120b",
     displayName: "LLAMA-3.3-70B-VERSATILE",
     url: "https://api.groq.com/openai/v1/chat/completions",
     envKey: "GROQ_API_KEY"
