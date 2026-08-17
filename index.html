@@ -80,6 +80,7 @@
     };
 
     function App() {
+      const DEBUG = new URLSearchParams(window.location.search).get('debug') === '1';
       const [activeAgent, setActiveAgent] = useState('write');
       const [messages, setMessages] = useState({ write: [], code: [], research: [] });
       const [userInput, setUserInput] = useState('');
@@ -341,6 +342,22 @@
                             <button type="button" onClick={() => handleDraftGmail(msg.content)} className="flex items-center gap-1 px-2 py-1 rounded bg-white/5 hover:bg-white/10 hover:text-white transition-all text-[11px]"><MailIcon className="w-3.5 h-3.5" /><span>Gmail</span></button>
                             <button type="button" onClick={() => handleBranchChat(idx)} className="flex items-center gap-1 px-2 py-1 rounded bg-white/5 hover:bg-white/10 hover:text-white transition-all text-[11px]"><GitBranchIcon className="w-3.5 h-3.5" /><span>Branch Here</span></button>
                           </div>
+                        )}
+                        {DEBUG && msg.role === 'model' && Array.isArray(msg.chunksUsed) && msg.chunksUsed.length > 0 && (
+                          <details className="mt-2 text-xs bg-[#0b1220] border border-white/10 rounded-lg p-3">
+                            <summary className="cursor-pointer text-[#8b9ab5]">Debug: Retrieval ({msg.chunksUsed.length} chunks)</summary>
+                            <div className="mt-2 space-y-2">
+                              {msg.chunksUsed.map((chunk, i) => (
+                                <div key={i} className="border border-white/5 rounded p-2 font-mono text-[10px] text-[#8b9ab5]">
+                                  <div><strong>#{i + 1}</strong> chunk_id: {String(chunk.chunk_id ?? 'n/a')}</div>
+                                  {chunk.score != null && <div>score: {String(chunk.score)}</div>}
+                                  {chunk.rerank_score != null && <div>rerank: {String(chunk.rerank_score)}</div>}
+                                  {chunk.section != null && <div>section: {String(chunk.section)}</div>}
+                                  {chunk.source_path != null && <div>source: {String(chunk.source_path)}</div>}
+                                </div>
+                              ))}
+                            </div>
+                          </details>
                         )}
                         <div className={`text-[10px] text-[#4a5568] ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>{msg.timestamp}</div>
                       </div>
