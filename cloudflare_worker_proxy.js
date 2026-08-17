@@ -52,7 +52,7 @@ const MODEL_QUEUE_TEMPLATE = [
   {
     provider: "groq",
     modelId: "openai/gpt-oss-120b",
-    displayName: "LLAMA-3.3-70B-VERSATILE",
+    displayName: "GPT-OSS-120B",
     url: "https://api.groq.com/openai/v1/chat/completions",
     envKey: "GROQ_API_KEY"
   }
