@@ -724,7 +724,7 @@ Exercises the Worker `mode:rag` code path — same one production users hit.
 - [ ] Agent-aware retrieval — per-agent `top_k` and KB scoping (Writing vs Coding vs Research)
 - [ ] Intent classifier — auto-route between Chat, Grounded RAG, and MCP based on query intent
 - [x] Observability + debug mode — `?debug=1` URL param surfaces retrieval + rerank scores in UI
-- [ ] Mobile-responsive layout improvements
+- [x] Mobile-responsive layout improvements
 - [x] Persistent conversation history across sessions
 - [x] Additional agent personas (Data + Design Agents)
 - [ ] Custom system prompt editor — define your own agents
