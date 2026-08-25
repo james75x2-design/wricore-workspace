@@ -187,10 +187,13 @@ POST { mode: "mcp", messages: [...] }
 | Tool | Type | Backing | Auth |
 |---|---|---|---|
 | `web_search` | Real external | Wikipedia REST API (`/w/rest.php/v1/search/page`) | Keyless |
+| `github_search` | Real external | GitHub REST API (`/search/repositories`) | Auth-optional |
+| `docs_search` | Real external | MDN Web Docs search API (`/api/v1/search`) | Keyless |
 | `calculator` | Deterministic | Workers-safe recursive-descent parser (no `eval`) | — |
 | `current_time` | Deterministic | Runtime clock | — |
 
 - **web_search** returns title, description, excerpt, and article URL for up to 5 results; strips markup, times out at 8s, and degrades gracefully to an empty result set or a labeled error. A natural fit for the Research Agent.
+- **docs_search** returns title, summary, and doc URL for up to 5 MDN results (web platform / JavaScript / CSS / DOM / browser APIs); same 8s timeout and graceful empty/error handling. A natural fit for the Coding Agent.
 - **calculator** uses a hand-written parser — **not** `eval`/`Function`, which the Cloudflare Workers runtime blocks.
 
 ### First-round tool forcing
@@ -233,6 +236,7 @@ answer. Answers cite source URLs where a tool returns them.
 | `current_time` | Deterministic | — | Returns the current UTC date/time |
 | `web_search` | Real external | Wikipedia REST API (keyless) | Searches Wikipedia; returns titles, descriptions, excerpts, and article URLs |
 | `github_search` | Real external | GitHub REST API (auth-optional) | Searches public repos; returns full name, description, stars, language, and URL |
+| `docs_search` | Real external | MDN Web Docs search API (keyless) | Searches official MDN docs; returns titles, summaries, and doc URLs |
 
 Each external tool uses a descriptive `User-Agent`, an 8-second timeout, and graceful
 empty/error handling so a slow or failing upstream never hangs the loop.
@@ -247,6 +251,7 @@ The first round forces the *right* tool based on the user's intent, then switche
 |------------------|-------------|
 | Arithmetic (operators / "calculate", "compute", …) | `calculator` |
 | Open-source / repo / package / library | `github_search` |
+| Docs / "how to use" / "syntax" / "MDN" / API reference | `docs_search` |
 | Factual / "who/what/when/where" / "explain" | `web_search` |
 | Ambiguous | `auto` (model decides) |
 
