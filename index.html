@@ -259,7 +259,7 @@
           const response = await fetch(WORKER_URL, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              ...(activeAgent === 'research' && currentMode === 'rag' ? { mode: 'rag' } : {}),
+              ...((activeAgent === 'research' || activeAgent === 'code') && currentMode === 'rag' ? { mode: 'rag' } : {}),
               messages: payloadMessages
             })
           });
@@ -408,7 +408,7 @@
           </main>
 
           <div className="py-4 border-t border-white/5 flex-shrink-0 relative z-10">
-            {activeAgent === 'research' && (
+            {(activeAgent === 'research' || activeAgent === 'code') && (
               <div className="flex items-center gap-2 mb-2 px-2">
                 <span className="text-[10px] font-mono text-[#8b9ab5] uppercase tracking-wider">Mode:</span>
                 <button type="button" onClick={() => setCurrentMode('chat')} className={`text-[11px] font-mono px-2.5 py-1 rounded-full transition-all border ${currentMode === 'chat' ? 'bg-[#34d399]/10 border-[#34d399]/30 text-[#34d399]' : 'bg-transparent border-white/10 text-[#8b9ab5] hover:text-white'}`}>Chat</button>
