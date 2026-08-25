@@ -73,7 +73,7 @@ Grounded answers cite chunks directly from the WriCoRe knowledge base. Every cla
 
 ## 🧠 Grounded RAG Mode *(v3.3.0)*
 
-The Research Agent now supports a **Grounded RAG mode** that answers factual questions from an embedded knowledge base with citations. Toggle it from the mode pill above the input.
+The Research **and Coding** Agents now support a **Grounded RAG mode** that answers questions from an embedded knowledge base with citations. Toggle it from the mode pill above the input. The Research Agent grounds on WriCoRe project docs; the Coding Agent grounds on a coding best-practices knowledge base.
 
 ### How it works
 
@@ -81,7 +81,7 @@ The Research Agent now supports a **Grounded RAG mode** that answers factual que
 User query → Cloudflare Worker (mode: "rag")
              ↓
              1. Hybrid Retrieval: keyword scoring + vector cosine similarity
-                against 31 embedded chunks (@cf/baai/bge-small-en-v1.5, 384-dim)
+                against 38 embedded chunks (@cf/baai/bge-small-en-v1.5, 384-dim)
              ↓
              2. Cross-encoder Reranker: rescore top-20 candidates
                 with @cf/baai/bge-reranker-base
@@ -111,6 +111,19 @@ UI renders:  Clean prose (inline [chunk_id] markers stripped)
 - **Structured logs** tag `retrieval_signal` (`hybrid` | `keyword_only`) and `ranking_signal` (`reranker` | `hybrid_fusion`)
 - **Failure categorization** — eval reports classify each failure (`retrieval_fail` | `generation_fail` | `grounding_fail` | `unanswered_mismatch`)
 - **Pipeline telemetry** — eval reports now include `pipelines_used`, `retrieval_signals`, `ranking_signals` breakdowns
+
+### Coding Agent knowledge base
+
+The Coding Agent has its own domain knowledge base — `data/kb/coding-guide.md` — indexed as **7 chunks** (`coding-guide::001`–`::007`) covering Code Review Principles, Debugging Methodology, Writing Unit Tests, Git Commit Hygiene, Refactoring Safely, Error Handling Patterns, and Performance Profiling. Because the Worker's RAG path is **agent-agnostic** (keyed on `mode:"rag"`, not on which agent asked), enabling a second grounded agent required **no backend logic change** — only surfacing the mode toggle for the Coding Agent in the UI and re-embedding the expanded KB.
+
+The result is a clean **Chat vs. Grounded RAG contrast**. Ask the Coding Agent *"How should I debug and write unit tests?"*:
+
+- **Chat mode** returns a broad, general answer from the model's own knowledge (uncited).
+- **Grounded RAG mode** returns a concise answer sourced *only* from the KB, with a Sources strip:
+
+  > When debugging, start by reproducing the failure reliably, then narrow the search space with logging, breakpoints, or bisection… `[coding-guide::002]` For unit tests, aim for them to be fast, isolated, and deterministic… `[coding-guide::003]`
+
+To extend or regenerate the coding KB, edit the sections in `scripts/add-coding-guide.mjs`, then run `node scripts/add-coding-guide.mjs && node scripts/embed-chunks.mjs && node scripts/build-worker-chunks.mjs`.
 
 ### Evaluation
 
