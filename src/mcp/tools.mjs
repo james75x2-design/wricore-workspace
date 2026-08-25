@@ -49,6 +49,19 @@ export const TOOL_DEFS = [
       properties: { query: { type: "string", description: "GitHub keywords, e.g. 'cloudflare workers kv cache'. Do not include the word github." } },
       required: ["query"]
     }
+  },
+  {
+    name: "docs_search",
+    description:
+      "Search official developer documentation (MDN Web Docs) for web platform, " +
+      "JavaScript, CSS, HTML, DOM, and browser API references. Use when the user " +
+      "asks how to use a web/JS/CSS feature, method, property, or API, or wants an " +
+      "authoritative docs link. Returns titles, summaries, and doc URLs. Always cite the URLs.",
+    parameters: {
+      type: "object",
+      properties: { query: { type: "string", description: "Docs keywords, e.g. 'array flatMap' or 'css grid template columns'" } },
+      required: ["query"]
+    }
   }
 ];
 
@@ -123,11 +136,44 @@ async function webSearch(query) {
   }
 }
 
+// ── docs_search: keyless MDN Web Docs search API. Workers-safe (fetch + timeout) ──
+const MDN_SEARCH_URL = "https://developer.mozilla.org/api/v1/search";
+const DOCS_UA = "WriCoRe/1.0 (+https://github.com/james75x2-design/wricore-workspace)";
+
+async function docsSearch(query) {
+  const q = String(query || "").trim();
+  if (!q) return { error: "Empty docs query." };
+  const url = `${MDN_SEARCH_URL}?q=${encodeURIComponent(q)}&locale=en-US`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  try {
+    const r = await fetch(url, { headers: { "User-Agent": DOCS_UA }, signal: controller.signal });
+    if (!r.ok) return { error: `MDN search HTTP ${r.status}` };
+    const j = await r.json();
+    const docs = Array.isArray(j.documents) ? j.documents : [];
+    if (docs.length === 0) return { query: q, source: "mdn", results: [], note: "No MDN documentation results for this query." };
+    return {
+      query: q,
+      source: "mdn",
+      results: docs.slice(0, 5).map(d => ({
+        title: d.title,
+        summary: stripTags(d.summary),
+        url: d.mdn_url ? `https://developer.mozilla.org${d.mdn_url}` : null
+      }))
+    };
+  } catch (e) {
+    return { error: e.name === "AbortError" ? "MDN docs search timed out." : String(e.message || e) };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function executeTool(name, args, _ctx = {}) {
   if (name === "calculator") return safeCalculate(args && args.expression);
   if (name === "current_time") { const now = new Date(); return { iso_utc: now.toISOString(), unix_ms: now.getTime() }; }
   if (name === "web_search") return webSearch(args && args.query);
   if (name === "github_search") return executeGithubSearch(args && args.query, _ctx && _ctx.env);
+  if (name === "docs_search") return docsSearch(args && args.query);
   throw new Error(`Unknown tool: ${name}`);
 }
 
@@ -194,6 +240,10 @@ export function pickForcedTool(userText) {
 
   if (/\b(github|repo|repository|open[- ]?source|npm|package|library|sdk|framework|boilerplate)\b/.test(t)) {
     return "github_search";
+  }
+
+  if (/\b(docs|documentation|mdn|api reference|how (do|to) (i|you) use|syntax (of|for)|method reference)\b/.test(t)) {
+    return "docs_search";
   }
 
   if (/\b(who|what|when|where|which|history|explain|define|meaning of|latest|current)\b/.test(t)) {
