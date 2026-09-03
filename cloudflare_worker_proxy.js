@@ -662,6 +662,10 @@ export default {
           return chunkId.startsWith("coding-guide::");
         }
 
+        if (agent === "write") {
+          return chunkId.startsWith("writing-guide::");
+        }
+
         if (agent === "research") {
           return (
             chunkId.startsWith("project-notes::") ||
