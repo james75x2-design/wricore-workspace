@@ -260,6 +260,7 @@
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               ...((activeAgent === 'research' || activeAgent === 'code') && currentMode === 'rag' ? { mode: 'rag' } : {}),
+              agent: activeAgent,
               messages: payloadMessages
             })
           });

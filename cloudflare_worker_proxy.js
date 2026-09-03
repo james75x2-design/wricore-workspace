@@ -633,6 +633,7 @@ export default {
 
     const temperature = requestData.temperature ?? 0.7;
     const mode = requestData.mode === "rag" ? "rag" : requestData.mode === "mcp" ? "mcp" : "chat";
+    const agent = requestData.agent || null;
 
     // ── MCP mode: tool-calling loop (Phase 5) — additive, leaves chat/rag intact ──
     if (mode === "mcp") {
@@ -653,7 +654,48 @@ export default {
 
       // Phase 3: retrieve top-20 candidates via hybrid, then rerank to top-5.
       const candidatePool = await ragRetrieveHybrid(env, query, RAG_TOP_K, RAG_CANDIDATE_POOL);
+
+      const isAgentPreferredChunk = (chunk) => {
+        const chunkId = chunk?.chunk_id || "";
+
+        if (agent === "code") {
+          return chunkId.startsWith("coding-guide::");
+        }
+
+        if (agent === "research") {
+          return (
+            chunkId.startsWith("project-notes::") ||
+            chunkId.startsWith("wricore-readme::")
+          );
+        }
+
+        return false;
+      };
+
+      // Boost the hybrid score for the fallback path and preserve the preferred
+      // ordering passed into the reranker.
+      for (const candidate of candidatePool) {
+        if (isAgentPreferredChunk(candidate)) {
+          candidate.score = Number((candidate.score + 0.15).toFixed(4));
+        }
+      }
+      candidatePool.sort((a, b) => b.score - a.score);
+
       const reranked = await rerankCandidates(env, query, candidatePool);
+
+      // The cross-encoder sorts by rerank_score, so apply the same soft boost
+      // after successful reranking. This keeps the preference effective whether
+      // the reranker succeeds or falls back to hybrid fusion.
+      if (reranked && reranked.length > 0) {
+        for (const candidate of reranked) {
+          if (isAgentPreferredChunk(candidate)) {
+            candidate.rerank_score = Number(
+              ((candidate.rerank_score ?? 0) + 0.15).toFixed(4)
+            );
+          }
+        }
+        reranked.sort((a, b) => b.rerank_score - a.rerank_score);
+      }
       let rankingSignal = "hybrid_fusion";
 
       if (reranked && reranked.length > 0) {
