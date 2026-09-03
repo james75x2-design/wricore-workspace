@@ -73,7 +73,7 @@ Grounded answers cite chunks directly from the WriCoRe knowledge base. Every cla
 
 ## 🧠 Grounded RAG Mode *(v3.3.0)*
 
-The Research **and Coding** Agents now support a **Grounded RAG mode** that answers questions from an embedded knowledge base with citations. Toggle it from the mode pill above the input. The Research Agent grounds on WriCoRe project docs; the Coding Agent grounds on a coding best-practices knowledge base.
+The Research, Coding, **and Writing** Agents all support a **Grounded RAG mode** that answers questions from an embedded knowledge base with citations. Toggle it from the mode pill above the input. Each agent grounds on its own domain: the Research Agent on WriCoRe project docs, the Coding Agent on a coding best-practices knowledge base, and the Writing Agent on a writing-craft knowledge base.
 
 ### How it works
 
@@ -81,7 +81,7 @@ The Research **and Coding** Agents now support a **Grounded RAG mode** that answ
 User query → Cloudflare Worker (mode: "rag")
              ↓
              1. Hybrid Retrieval: keyword scoring + vector cosine similarity
-                against 38 embedded chunks (@cf/baai/bge-small-en-v1.5, 384-dim)
+                against 45 embedded chunks (@cf/baai/bge-small-en-v1.5, 384-dim)
              ↓
              2. Cross-encoder Reranker: rescore top-20 candidates
                 with @cf/baai/bge-reranker-base
@@ -124,6 +124,28 @@ The result is a clean **Chat vs. Grounded RAG contrast**. Ask the Coding Agent *
   > When debugging, start by reproducing the failure reliably, then narrow the search space with logging, breakpoints, or bisection… `[coding-guide::002]` For unit tests, aim for them to be fast, isolated, and deterministic… `[coding-guide::003]`
 
 To extend or regenerate the coding KB, edit the sections in `scripts/add-coding-guide.mjs`, then run `node scripts/add-coding-guide.mjs && node scripts/embed-chunks.mjs && node scripts/build-worker-chunks.mjs`.
+
+### Writing Agent knowledge base
+
+The Writing Agent grounds on `data/kb/writing-guide.md`, indexed as **7 chunks** (`writing-guide::001`–`::007`) covering Structuring an Argument, Editing for Concision, Tone and Register, Active Voice and Strong Verbs, Adapting to Your Audience, Outlining Before Drafting, and Common Style Pitfalls. Adding it followed the same reproducible path as the coding KB: author the doc via `scripts/add-writing-guide.mjs`, re-embed, rebuild `worker-chunks.js`, and widen the UI mode-toggle gates — no backend retrieval logic changed.
+
+Asking the Writing Agent *"How do I edit for concision and choose the right tone?"* in Grounded RAG mode retrieves `writing-guide::002` (Editing for Concision) and `writing-guide::003` (Tone and Register) as the top sources.
+
+### Agent-aware retrieval
+
+With three agents grounding on four document domains, a shared knowledge base risks cross-talk — a coding question surfacing project docs, or a writing question surfacing coding advice. WriCoRe solves this with a **soft rank preference**, not a hard filter:
+
+| Agent | Preferred chunks |
+|---|---|
+| Writing | `writing-guide::*` |
+| Coding | `coding-guide::*` |
+| Research | `project-notes::*`, `wricore-readme::*` |
+
+Chunks matching the active agent's domain receive a **+0.15 boost**. Because it's a preference rather than a filter, no agent is ever starved of results — a genuinely relevant chunk from another domain can still rank.
+
+The boost is applied in **two places**, which matters: the cross-encoder reranker sorts by `rerank_score` and ignores the hybrid `score` entirely. Boosting only the hybrid score would have been silently ineffective whenever reranking succeeded. So the preference is applied to `score` before reranking (covering the `hybrid_fusion` fallback path) and again to `rerank_score` after (covering the `reranker` path), with a re-sort each time.
+
+No re-embedding or index rebuild is required to change the mapping — it's a pure ranking-time adjustment.
 
 ### Evaluation
 
