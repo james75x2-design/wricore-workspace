@@ -760,18 +760,42 @@ Exercises the Worker `mode:rag` code path — same one production users hit.
 - [x] **Tool-loop dedupe visibility** — repeated identical tool calls are cached within a loop, exposed via `tool_calls[].deduped`, and logged through `tool_call_deduped` telemetry
 - [x] **Remote MCP client foundation** — JSON-RPC `tools/list` and `tools/call` support added behind `REMOTE_MCP_URL`; remote tools are prefixed with `remote__...` and local tools remain the default path
 - [x] **Remote MCP production validation** — validated against a live Cloudflare-hosted MCP server exposing `tools/list` and `tools/call`; WriCoRe successfully loaded `remote__echo`, executed it through the remote `tools/call` path, and preserved local tool behavior
-- [ ] Documentation search tool — future MCP tool for documentation and reference lookup
-- [ ] Agent-aware retrieval — per-agent `top_k` and KB scoping (Writing vs Coding vs Research)
-- [ ] Intent classifier — auto-route between Chat, Grounded RAG, and MCP based on query intent
+- [x] **Documentation search tool** — `docs_search` MCP tool backed by the keyless MDN Web Docs search API
+- [x] **Agent-aware retrieval** — soft `+0.15` rank preference per agent, applied to both hybrid and reranker scores
+- [x] **Intent classifier** — Auto mode routes each message to Chat, Grounded RAG, or MCP tools
 - [x] Observability + debug mode — `?debug=1` URL param surfaces retrieval + rerank scores in UI
 - [x] Mobile-responsive layout improvements
 - [x] Persistent conversation history across sessions
 - [x] Additional agent personas (Data + Design Agents)
-- [ ] Custom system prompt editor — define your own agents
-- [ ] Grounded RAG mode on Writing and Coding agents (with agent-specific KBs)
+- [x] **Custom system prompt editor** — per-agent persona overrides persisted in `localStorage`
+- [x] **Grounded RAG on Writing and Coding agents** — `writing-guide` and `coding-guide` KBs, 7 chunks each
 - [ ] Streaming responses for faster perceived latency
 
 ---
+
+## 🎛️ Auto Mode and Custom Prompts
+
+### Auto mode — intent-based routing
+
+The mode pill offers **Auto** alongside Chat and Grounded RAG. In Auto, each message is classified client-side by a deterministic keyword heuristic and routed to the mode that fits:
+
+| Signal in the message | Routed to |
+|---|---|
+| Arithmetic, "search", "look up", "latest", repo / npm / docs / API reference | `mcp` — tool loop |
+| KB terms, or the active agent's domain vocabulary (e.g. "unit testing" for Coding, "concision" for Writing) | `rag` — grounded retrieval |
+| Anything else, including generative asks like "write me an email" | `chat` |
+
+MCP intent is evaluated **before** RAG, so a tool-shaped question wins ties. RAG routing is gated to the three RAG-capable agents, so the Data and Design agents never route there. Selecting Chat or Grounded RAG manually always overrides the classifier — Auto is opt-in, never silent. A hint line reports the last routed mode.
+
+The classifier is a pure function with no model call, so routing costs nothing and adds no latency.
+
+**This is what makes MCP mode reachable from the UI.** Before Auto, `mode:"mcp"` was API-only — you had to `curl` the Worker to use it. Auto mode puts `calculator`, `web_search`, `github_search`, and `docs_search` in front of ordinary users for the first time.
+
+### Custom system prompt editor
+
+**Edit Prompt** in the agent header opens the active agent's system prompt for editing. Overrides are stored **per agent** in `localStorage` (`wricore_custom_prompts`), so each persona can be reshaped independently and the change survives a refresh. A customized agent shows an amber **CUSTOM** badge, and **Reset to default** restores the shipped persona.
+
+Saving a prompt that matches the default removes the override rather than storing a copy, so the CUSTOM badge always means something. The temporal anchor is appended to custom prompts exactly as it is to the defaults, so a custom persona never loses its sense of the current date.
 
 ## 💡 Why I Built This
 
