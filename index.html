@@ -121,6 +121,26 @@
       const [copiedIndex, setCopiedIndex] = useState(null);
       const [isDemoMode, setIsDemoMode] = useState(false);
       const [currentMode, setCurrentMode] = useState('chat');
+      const [autoRoutedMode, setAutoRoutedMode] = useState(null);
+      const RAG_CAPABLE_AGENTS = ['research', 'code', 'write'];
+      const classifyIntent = (text, agentKey) => {
+        const t = String(text || '').toLowerCase().trim();
+        if (!t) return 'chat';
+        const mathOp = /[\d)]\s*[-+*/^]\s*[\d(]/.test(t);
+        const mathWord = /\b(calculate|compute|evaluate|sum of|product of|multiply|divide|square root|percent(age)?)\b/.test(t);
+        const toolWord = /\b(search|look up|google|find me|latest|current|news|today'?s|repo|repository|github|npm|package|library|sdk|documentation|docs|mdn|api reference|syntax (of|for)|what time|current time|what'?s the date)\b/.test(t);
+        if (mathOp || mathWord || toolWord) return 'mcp';
+        if (RAG_CAPABLE_AGENTS.includes(agentKey)) {
+          const kbWord = /\b(wricore|knowledge base|kb\b|rag\b|retrieval|eval(uation)? harness|chunk|citation|reranker|project notes|coding guide|writing guide|best practice|guideline|principle)\b/.test(t);
+          const domainWord = agentKey === 'code'
+            ? /\b(code review|debug(ging)?|unit test(ing|s)?|refactor(ing)?|commit|error handling|profiling)\b/.test(t)
+            : agentKey === 'write'
+            ? /\b(concision|concise|tone|register|active voice|audience|outlin(e|ing)|style|argument structure)\b/.test(t)
+            : /\b(architecture|how does .* work|explain the (system|design))\b/.test(t);
+          if (kbWord || domainWord) return 'rag';
+        }
+        return 'chat';
+      };
       const PROMPTS_STORAGE_KEY = 'wricore_custom_prompts';
       const [customPrompts, setCustomPrompts] = useState(() => {
         try { const saved = localStorage.getItem(PROMPTS_STORAGE_KEY); return saved ? JSON.parse(saved) : {}; } catch { return {}; }
@@ -275,12 +295,14 @@
 
         const historyPayload = messages[activeAgent].map(msg => ({ role: msg.role === 'user' ? 'user' : 'assistant', content: msg.content }));
         const payloadMessages = [{ role: 'system', content: anchoredSystemInstruction }, ...historyPayload, { role: 'user', content: promptToSend }];
+        const resolvedMode = currentMode === 'auto' ? classifyIntent(promptToSend, activeAgent) : currentMode;
+        if (currentMode === 'auto') setAutoRoutedMode(resolvedMode);
 
         try {
           const response = await fetch(WORKER_URL, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              ...((activeAgent === 'research' || activeAgent === 'code' || activeAgent === 'write') && currentMode === 'rag' ? { mode: 'rag' } : {}),
+              ...(resolvedMode === 'rag' && RAG_CAPABLE_AGENTS.includes(activeAgent) ? { mode: 'rag' } : resolvedMode === 'mcp' ? { mode: 'mcp' } : {}),
               agent: activeAgent,
               messages: payloadMessages
             })
@@ -456,9 +478,11 @@
             {(activeAgent === 'research' || activeAgent === 'code' || activeAgent === 'write') && (
               <div className="flex items-center gap-2 mb-2 px-2">
                 <span className="text-[10px] font-mono text-[#8b9ab5] uppercase tracking-wider">Mode:</span>
+                <button type="button" onClick={() => setCurrentMode('auto')} className={`text-[11px] font-mono px-2.5 py-1 rounded-full transition-all border ${currentMode === 'auto' ? 'bg-[#34d399]/10 border-[#34d399]/30 text-[#34d399]' : 'bg-transparent border-white/10 text-[#8b9ab5] hover:text-white'}`}>Auto</button>
                 <button type="button" onClick={() => setCurrentMode('chat')} className={`text-[11px] font-mono px-2.5 py-1 rounded-full transition-all border ${currentMode === 'chat' ? 'bg-[#34d399]/10 border-[#34d399]/30 text-[#34d399]' : 'bg-transparent border-white/10 text-[#8b9ab5] hover:text-white'}`}>Chat</button>
                 <button type="button" onClick={() => setCurrentMode('rag')} className={`text-[11px] font-mono px-2.5 py-1 rounded-full transition-all border flex items-center gap-1 ${currentMode === 'rag' ? 'bg-[#34d399]/10 border-[#34d399]/30 text-[#34d399]' : 'bg-transparent border-white/10 text-[#8b9ab5] hover:text-white'}`}><BookIcon className="w-3 h-3" />Grounded RAG</button>
                 {currentMode === 'rag' && (<span className="text-[10px] font-mono text-[#4a5568] ml-1">Answers cite the WriCoRe knowledge base.</span>)}
+                {currentMode === 'auto' && (<span className="text-[10px] font-mono text-[#4a5568] ml-1">Auto-routes each message to Chat, Grounded RAG, or Tools{autoRoutedMode ? ` — last: ${autoRoutedMode.toUpperCase()}` : ''}.</span>)}
               </div>
             )}
             <form onSubmit={handleSendMessage} className="relative bg-[#0d1520] border border-white/10 focus-within:border-[#00d4ff]/50 rounded-2xl p-2 transition-all">
