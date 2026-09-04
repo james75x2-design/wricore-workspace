@@ -121,12 +121,19 @@
       const [copiedIndex, setCopiedIndex] = useState(null);
       const [isDemoMode, setIsDemoMode] = useState(false);
       const [currentMode, setCurrentMode] = useState('chat');
+      const PROMPTS_STORAGE_KEY = 'wricore_custom_prompts';
+      const [customPrompts, setCustomPrompts] = useState(() => {
+        try { const saved = localStorage.getItem(PROMPTS_STORAGE_KEY); return saved ? JSON.parse(saved) : {}; } catch { return {}; }
+      });
+      const [isPromptEditorOpen, setIsPromptEditorOpen] = useState(false);
+      const [promptDraft, setPromptDraft] = useState('');
 
       const chatEndRef = useRef(null);
       const textareaRef = useRef(null);
 
       useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isLoading, activeAgent]);
       useEffect(() => { try { localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages)); } catch {} }, [messages]);
+      useEffect(() => { try { localStorage.setItem(PROMPTS_STORAGE_KEY, JSON.stringify(customPrompts)); } catch {} }, [customPrompts]);
       useEffect(() => { if (textareaRef.current) { textareaRef.current.style.height = 'auto'; textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 180)}px`; } }, [userInput]);
       useEffect(() => { if ('speechSynthesis' in window) window.speechSynthesis.cancel(); setIsSpeaking(null); }, [activeAgent]);
 
@@ -143,6 +150,20 @@
       const handleToggleFeedback = (idx, type) => { setFeedbacks(prev => { const key = `${activeAgent}_${idx}`; const c = prev[key]; return { ...prev, [key]: c === type ? null : type }; }); };
 
       const agent = AGENT_CONFIGS[activeAgent];
+      const effectiveSystemInstruction = customPrompts[activeAgent] || agent.systemInstruction;
+      const isPromptCustomized = Boolean(customPrompts[activeAgent]);
+      const openPromptEditor = () => { setPromptDraft(effectiveSystemInstruction); setIsPromptEditorOpen(true); };
+      const savePrompt = () => {
+        const trimmed = promptDraft.trim();
+        setCustomPrompts(prev => {
+          const next = { ...prev };
+          if (!trimmed || trimmed === agent.systemInstruction) delete next[activeAgent];
+          else next[activeAgent] = trimmed;
+          return next;
+        });
+        setIsPromptEditorOpen(false);
+      };
+      const resetPrompt = () => { setPromptDraft(agent.systemInstruction); };
 
       const renderMessageContent = (input) => {
         const isMessageObject = input && typeof input === 'object' && !Array.isArray(input);
@@ -241,7 +262,7 @@
         setIsLoading(true); setErrorMsg(null);
 
         const currentLiveDate = new Date().toDateString();
-        const anchoredSystemInstruction = `${agent.systemInstruction}\n\n[CRITICAL TEMPORAL ANCHOR: The actual current calendar date is ${currentLiveDate}.]`;
+        const anchoredSystemInstruction = `${effectiveSystemInstruction}\n\n[CRITICAL TEMPORAL ANCHOR: The actual current calendar date is ${currentLiveDate}.]`;
 
         if (isDemoMode) {
           setTimeout(() => {
@@ -331,8 +352,31 @@
 
           <div className="flex items-center gap-3 p-3 bg-[#162030]/60 border border-white/5 rounded-xl text-xs sm:text-sm text-[#8b9ab5] flex-shrink-0">
             <span className="font-mono font-bold tracking-wider px-2 py-0.5 rounded text-[10px]" style={{ backgroundColor: `${agent.color}15`, color: agent.color, border: `1px solid ${agent.color}30` }}>{agent.badge}</span>
-            <span className="truncate">{agent.description}</span>
+            <span className="truncate flex-1">{agent.description}</span>
+            {isPromptCustomized && (<span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 flex-shrink-0">CUSTOM</span>)}
+            <button type="button" onClick={openPromptEditor} title="Edit system prompt" className="font-mono text-[10px] px-2 py-0.5 rounded border border-white/10 text-[#8b9ab5] hover:text-white hover:border-white/30 transition-all flex-shrink-0">Edit Prompt</button>
           </div>
+
+          {isPromptEditorOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setIsPromptEditorOpen(false)}>
+              <div className="w-full max-w-2xl bg-[#111827] border border-white/10 rounded-2xl p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-bold text-white">System Prompt — {agent.name}</h3>
+                  <button type="button" onClick={() => setIsPromptEditorOpen(false)} className="text-[#8b9ab5] hover:text-white font-bold">×</button>
+                </div>
+                <p className="text-[11px] text-[#8b9ab5] mb-3 leading-relaxed">Overrides this agent's persona. Saved per agent in your browser. The current-date anchor is always appended automatically.</p>
+                <textarea value={promptDraft} onChange={(e) => setPromptDraft(e.target.value)} rows="12" maxLength={4000} className="w-full bg-[#0b0f19] border border-white/10 rounded-xl p-3 text-[13px] text-[#f0f4f8] font-mono leading-relaxed outline-none focus:border-white/30 resize-y" />
+                <div className="flex items-center justify-between mt-3">
+                  <span className="text-[10px] font-mono text-[#4a5568]">{promptDraft.length} / 4000</span>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={resetPrompt} className="text-[11px] font-mono px-3 py-1.5 rounded-lg border border-white/10 text-[#8b9ab5] hover:text-white transition-all">Reset to default</button>
+                    <button type="button" onClick={() => setIsPromptEditorOpen(false)} className="text-[11px] font-mono px-3 py-1.5 rounded-lg border border-white/10 text-[#8b9ab5] hover:text-white transition-all">Cancel</button>
+                    <button type="button" onClick={savePrompt} className="text-[11px] font-mono px-3 py-1.5 rounded-lg font-bold text-[#0b0f19] transition-all" style={{ backgroundColor: agent.color }}>Save</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {errorMsg && (
             <div className="mt-3 flex items-start gap-2.5 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs sm:text-sm text-red-300">
