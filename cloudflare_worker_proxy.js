@@ -8,7 +8,7 @@ import { listRemoteTools, callRemoteTool } from "./src/mcp/remote-client.mjs";
 /**
  * WriCoRe Cloudflare Worker Proxy — Dual-Engine Router (v3.1.0)
  * Format:    ES Module
- * Primary:   Google Gemini (gemini-2.0-flash, via OpenAI-compatible endpoint)
+ * Primary:   Google Gemini (gemini-3.8-flash, via OpenAI-compatible endpoint)
  * Fallback:  Groq (openai/gpt-oss-120b)
  *
  * v3.3 Improvements over v3.2:
@@ -44,8 +44,8 @@ const WORKER_SERVICE = "wricore-worker";
 const MODEL_QUEUE_TEMPLATE = [
   {
     provider: "gemini",
-    modelId: "gemini-2.0-flash",
-    displayName: "GEMINI-2.0-FLASH",
+    modelId: "gemini-3.8-flash",
+    displayName: "GEMINI-3.8-FLASH",
     url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
     envKey: "GEMINI_API_KEY"
   },
